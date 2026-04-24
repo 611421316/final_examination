@@ -1,4 +1,24 @@
 # === Step 5: Strictly Separated Task Definitions ===
+external_research_task:
+  description: >
+    Provide general insights about restaurant reviews and rating behavior.
+
+    Focus on:
+    - What makes users give 1–2 stars
+    - What makes users give 3 stars
+    - What makes users give 4–5 stars
+    - Common factors: food, service, price, waiting time, atmosphere
+
+    IMPORTANT:
+    - Do NOT fabricate data about the specific user or item
+    - Provide only general patterns
+    - Keep it concise
+
+  expected_output: >
+    - 1–2 stars: Poor food quality, rude or slow service, long waiting time
+    - 3 stars: Average food, acceptable service, minor issues (e.g. price or wait)
+    - 4–5 stars: Delicious food, friendly service, pleasant atmosphere
+  agent: internet_researcher
 
 analyze_user_task:
   description: >

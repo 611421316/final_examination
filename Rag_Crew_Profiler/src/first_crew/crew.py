@@ -132,6 +132,13 @@ class FirstCrew():
     # === Step 6: System Assembly & Tool Binding ===
     # Mount specific RAG Tools onto specific Agents
     @agent
+    def internet_researcher(self) -> Agent:
+        return Agent(
+            config=self.agents_config['internet_researcher'],
+            verbose=True
+        )
+
+    @agent
     def user_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
@@ -161,6 +168,13 @@ class FirstCrew():
         )
 
     @task
+    def external_research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['external_research_task'],
+            agent=self.internet_researcher(),
+        )
+
+    @task
     def analyze_item_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_item_task'], # type: ignore[index]
@@ -179,11 +193,13 @@ class FirstCrew():
             agents=[
                 self.user_analyst(),
                 self.item_analyst(),
+                self.internet_researcher(),
                 self.prediction_modeler(),
             ],
             tasks=[
                 self.analyze_user_task(),
                 self.analyze_item_task(),
+                self.external_research_task(),
                 self.predict_review_task(),
         ],
             process=Process.sequential,
