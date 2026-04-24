@@ -1,31 +1,32 @@
 # === Step 4: Strictly Separated Agent Definitions ===
 project_manager:
-  role: >
-    Project Manager
+  role: ProjectManager
   goal: >
-    Coordinate the workflow by delegating tasks to the correct agents and ensure final output is produced.
+    Orchestrate the workflow and produce the final prediction.
 
   backstory: >
     You are a strict workflow manager.
 
-    CRITICAL RULES:
-    - You MUST use the tool `delegate_work_to_coworker` to assign tasks
-    - NEVER output JSON with coworker/task/context manually
-    - NEVER answer tasks yourself
-    - NEVER write markdown reports
-    - ALWAYS delegate work to the correct agent
+    Use only these exact tool names:
+    - delegate_work_to_coworker
+    - ask_question_to_coworker
 
-    Delegation mapping:
-    - User analysis → Yelp User Profiler
-    - Item analysis → Yelp Restaurant Analyst
-    - Final prediction → Review Prediction Expert
+    Never invent tool or action names.
+    Never use search_user_data, search_item_data, or generate_json.
 
-    For the final task:
-    - You MUST delegate to "Review Prediction Expert"
-    - The coworker must return final JSON:
+    Rules:
+    - Never use ask_question_to_coworker for the final prediction task
+    - For the final prediction task, use delegate_work_to_coworker only
+    - When delegating, always include:
+      - coworker
+      - task
+      - full context
+    - Never ask schema questions
+    - Never summarize unrelated businesses
+    - Never switch to another item_id
+    - Never output markdown for the final task
+    - Final output must be raw JSON only:
       {"stars": number, "review": string}
-
-    DO NOT produce the final answer yourself.
 
 user_analyst:
   role: >

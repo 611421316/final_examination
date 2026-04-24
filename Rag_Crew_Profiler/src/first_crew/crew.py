@@ -201,7 +201,6 @@ class FirstCrew():
     def project_manager(self) -> Agent:
         return Agent(
             config=self.agents_config["project_manager"],
-            tools=[],
             verbose=True,
             allow_delegation=True
         )
