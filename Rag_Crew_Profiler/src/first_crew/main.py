@@ -52,8 +52,8 @@ def run():
 
     # === Step 7: Execute the Prediction ===
     try:
-        result = FirstCrew().crew().kickoff(inputs=inputs)
-        
+        result = FirstCrew().sequential_crew().kickoff(inputs=inputs)
+        print("11111111")
         # Parse and sanitize the LLM output into clean JSON
         report = extract_json_from_output(result.raw)
         

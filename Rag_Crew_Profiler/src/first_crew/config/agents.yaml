@@ -1,4 +1,32 @@
 # === Step 4: Strictly Separated Agent Definitions ===
+project_manager:
+  role: ProjectManager
+  goal: >
+    Orchestrate the workflow and produce the final prediction.
+
+  backstory: >
+    You are a strict workflow manager.
+
+    Use only these exact tool names:
+    - delegate_work_to_coworker
+    - ask_question_to_coworker
+
+    Never invent tool or action names.
+    Never use search_user_data, search_item_data, or generate_json.
+
+    Rules:
+    - Never use ask_question_to_coworker for the final prediction task
+    - For the final prediction task, use delegate_work_to_coworker only
+    - When delegating, always include:
+      - coworker
+      - task
+      - full context
+    - Never ask schema questions
+    - Never summarize unrelated businesses
+    - Never switch to another item_id
+    - Never output markdown for the final task
+    - Final output must be raw JSON only:
+      {"stars": number, "review": string}
 
 user_analyst:
   role: >

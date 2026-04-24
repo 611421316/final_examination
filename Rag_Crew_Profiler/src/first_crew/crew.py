@@ -174,12 +174,20 @@ class FirstCrew():
         )
 
     @crew
-    def crew(self) -> Crew:
+    def sequential_crew(self) -> Crew:
         return Crew(
-            agents=self.agents,  # Automatically created by the @agent decorator
-            tasks=self.tasks,  # Automatically created by the @task decorator
+            agents=[
+                self.user_analyst(),
+                self.item_analyst(),
+                self.prediction_modeler(),
+            ],
+            tasks=[
+                self.analyze_user_task(),
+                self.analyze_item_task(),
+                self.predict_review_task(),
+        ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge],  # Bind global Knowledge
+            knowledge_sources=[schema_knowledge],
             embedder={
                 "provider": "huggingface",
                 "config": {
@@ -188,3 +196,36 @@ class FirstCrew():
             },
             verbose=True
         )
+
+    @agent
+    def project_manager(self) -> Agent:
+        return Agent(
+            config=self.agents_config["project_manager"],
+            verbose=True,
+            allow_delegation=True
+        )
+    
+    @crew
+    def hierarchical_crew(self) -> Crew:
+        return Crew(
+            agents=[
+                self.user_analyst(),
+                self.item_analyst(),
+                self.prediction_modeler(),
+            ],
+            tasks=[
+                self.analyze_user_task(),
+                self.analyze_item_task(),
+                self.predict_review_task(),
+            ],
+            process=Process.hierarchical,
+            manager_agent=self.project_manager(),
+            knowledge_sources=[schema_knowledge],
+            embedder={
+                "provider": "huggingface",
+                "config": {
+                    "model": "BAAI/bge-small-en-v1.5"
+                }
+            },
+            verbose=True,
+    )
