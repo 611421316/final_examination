@@ -4,6 +4,7 @@ import warnings
 import json
 
 from first_crew.crew import FirstCrew
+from first_crew.flow import kickoff as flow_kickoff
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
@@ -55,6 +56,8 @@ def run():
         mode = sys.argv[1].lower() if len(sys.argv) > 1 else "sequential"
         if mode == "hierarchical":
             result = FirstCrew().hierarchical_crew().kickoff(inputs=inputs)
+        elif mode == "flow":
+            result = flow_kickoff()
         else:
             result = FirstCrew().sequential_crew().kickoff(inputs=inputs)
         # Parse and sanitize the LLM output into clean JSON
