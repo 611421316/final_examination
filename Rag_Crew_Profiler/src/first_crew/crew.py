@@ -23,6 +23,14 @@ import os
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
+with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
+    eda_content = f.read()
+
+eda_knowledge = StringKnowledgeSource(
+    content=eda_content,
+    metadata={"source": "EDA for RAG"}
+)
+
 # Workaround for early CrewAI-Tools versions that enforce OpenAI Key validation via Pydantic
 os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "NA")
 
@@ -203,7 +211,7 @@ class FirstCrew():
                 self.predict_review_task(),
         ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge],
+            knowledge_sources=[schema_knowledge, eda_knowledge],
             embedder={
                 "provider": "huggingface",
                 "config": {
