@@ -1,0 +1,25 @@
+# === Sensitive Data ===
+.env
+
+# === Python Cache ===
+__pycache__/
+*.pyc
+*.pyo
+
+# === Virtual Environment ===
+.venv/
+
+# === macOS System Files ===
+.DS_Store
+
+# === Large Data Files ===
+data/*.json
+data/*.jsonl
+chroma_index.tar.gz
+
+# === CrewAI Output ===
+report.json
+report.md
+
+# === Logs ===
+*.log

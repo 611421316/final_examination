@@ -1,0 +1,36 @@
+# === Step 5: Strictly Separated Task Definitions ===
+
+analyze_user_task:
+  description: >
+    Use the search_user_profile_data tool to find information about user {user_id}.
+    You MUST call the tool with a natural language search_query string, for example:
+    Action: search_user_profile_data
+    Action Input: {{"search_query": "What are the review habits and average stars for user {user_id}"}}
+    Also use search_historical_reviews_data to find past reviews written by this user.
+    Understand their average stars, what words they commonly use, and their general sentiment.
+  expected_output: >
+    A detailed markdown profile of user {user_id}'s preferences and rating habits.
+  agent: user_analyst
+
+analyze_item_task:
+  description: >
+    Use the search_restaurant_feature_data tool to find information about business {item_id}.
+    You MUST call the tool with a natural language search_query string, for example:
+    Action: search_restaurant_feature_data
+    Action Input: {{"search_query": "What are the categories and star rating for business {item_id}"}}
+    Also use search_historical_reviews_data to find past reviews about this business.
+    Understand its categories, attributes, and overall public sentiment.
+  expected_output: >
+    A detailed markdown report of business {item_id}'s features, pros, and cons.
+  agent: item_analyst
+
+predict_review_task:
+  description: >
+    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1.0 to 5.0) and write the Review Text.
+    You MUST base your prediction on the actual data retrieved by the previous agents. Do NOT say the data was not found.
+    Consider if the restaurant's features align with the user's historical preferences.
+  expected_output: >
+    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1.0 to 5.0) and "review" (a string).
+    Use single curly braces. Example: {"stars": 4.5, "review": "The review text..."}
+    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+  agent: prediction_modeler
