@@ -61,7 +61,7 @@ def run():
         else:
             result = FirstCrew().sequential_crew().kickoff(inputs=inputs)
         # Parse and sanitize the LLM output into clean JSON
-        report = extract_json_from_output(result.raw)
+        report = extract_json_from_output(result)
         
         # Write clean report
         with open('report.json', 'w', encoding='utf-8') as f:
