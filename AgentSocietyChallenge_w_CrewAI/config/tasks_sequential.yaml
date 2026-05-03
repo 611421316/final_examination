@@ -118,10 +118,10 @@ predict_review_task:
 
   expected_output: >
     Output ONLY a valid JSON object:
-    {"stars": <float 1-5>, "review": "<natural review text>"}
+    {"stars": <Integer between 1 and 5>, "review": "<natural review text>"}
 
     RULES:
-    - stars must be a number between 1.0 and 5.0
+    - stars must be an integer between 1 and 5
     - review must be realistic and consistent with stars
     - NO explanation
     - NO markdown

@@ -45,16 +45,19 @@ embedding_model = HuggingFaceEmbeddings(
 
 rag_config = {
     "embedder": {
-        "provider": "huggingface",
-        "config": {"model": "BAAI/bge-small-en-v1.5"}
+        "provider": "sentence-transformers",
+        "config": {
+            "model": "BAAI/bge-small-en-v1.5"
+        }
     },
     "vectordb": {
         "provider": "chromadb",
         "config": {
-            "dir": "./data/my_persistent_chroma_db" # <-- Path to save embeddings
+            "dir": "./data/my_chroma"
         }
     }
 }
+os.environ["CHROMA_OPENAI_API_KEY"] = "NA"
 
 # === Step 3: Configure RAG Tools (CrewAI RAG Tools) ===
 def create_rag_tool(json_path: str, collection_name: str, config: dict, name: str, description: str) -> JSONSearchTool:
@@ -146,12 +149,6 @@ class HierarchicalCrew():
 
     # === Step 6: System Assembly & Tool Binding ===
     # Mount specific RAG Tools onto specific Agents
-    @agent
-    def internet_researcher(self) -> Agent:
-        return Agent(
-            config=self.agents_config['internet_researcher'],
-            verbose=True
-        )
 
     @agent
     def user_analyst(self) -> Agent:

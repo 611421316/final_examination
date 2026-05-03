@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from crewai import Agent, Crew, Process, Task, LLM
 load_dotenv()
 
 # Resolve project root (two levels up from src/crews/crew.py)
@@ -8,21 +9,19 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # === LLM Provider Selection ===
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
-
+print("Here is provider: ", llm_provider)
 if llm_provider == "nvidia":
-    # Route through LiteLLM's OpenAI-compatible interface to Nvidia API
-    os.environ["MODEL"] = f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}"
-    os.environ["OPENAI_API_BASE"] = os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
-    os.environ["OPENAI_API_KEY"] = os.getenv("NVIDIA_API_KEY", "")
+    default_llm = LLM(
+        model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
+        api_key=os.getenv("NVIDIA_API_KEY", ""),
+        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+    )
 else:
-    # Default to local Ollama Phi3
-    os.environ["MODEL"] = "ollama/phi3"
+    default_llm = LLM(model="ollama/phi3")
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
-from crewai.agents.agent_builder.base_agent import BaseAgent
 from crewai_tools import JSONSearchTool
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
-from typing import List
 import os
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -172,6 +171,13 @@ class CollaborativeCrew():
         )
 
     @agent
+    def reviewer(self) -> Agent:
+        return Agent(
+            config=self.agents_config['reviewer'], # type: ignore[index]
+            verbose=True
+        )
+
+    @agent
     def prediction_modeler(self) -> Agent:
         return Agent(
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
@@ -197,10 +203,23 @@ class CollaborativeCrew():
             config=self.tasks_config['analyze_item_task'], # type: ignore[index]
         )
 
+
     @task
     def predict_review_task(self) -> Task:
         return Task(
             config=self.tasks_config['predict_review_task'], # type: ignore[index]
+        )
+
+    @task
+    def review_prediction_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['review_prediction_task'], # type: ignore[index]
+        )
+
+    @task
+    def final_prediction_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['final_prediction_task'], # type: ignore[index]
             output_file='report.json'
         )
 
@@ -208,17 +227,20 @@ class CollaborativeCrew():
     def crew(self) -> Crew:
         return Crew(
             agents=[
+                self.internet_researcher(),
                 self.user_analyst(),
                 self.item_analyst(),
-                self.internet_researcher(),
                 self.prediction_modeler(),
+                self.reviewer(),
             ],
             tasks=[
+                self.internet_research_task(),
                 self.analyze_user_task(),
                 self.analyze_item_task(),
-                self.external_research_task(),
                 self.predict_review_task(),
-        ],
+                self.review_prediction_task(),
+                self.final_prediction_task(),
+            ],  
             process=Process.sequential,
             knowledge_sources=[schema_knowledge, eda_knowledge],
             embedder={

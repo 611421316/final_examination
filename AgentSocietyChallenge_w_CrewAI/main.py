@@ -3,7 +3,6 @@ import sys
 import warnings
 import json
 
-from src.crews.crew import FirstCrew
 from src.crews.crew_hierarchical import HierarchicalCrew
 from src.crews.crew_collaborative import CollaborativeCrew
 from src.crews.crew_sequential import SequentialCrew
