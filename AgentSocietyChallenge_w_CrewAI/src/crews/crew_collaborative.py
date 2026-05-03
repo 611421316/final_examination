@@ -151,7 +151,8 @@ class CollaborativeCrew():
     def internet_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config['internet_researcher'],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
@@ -159,7 +160,8 @@ class CollaborativeCrew():
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
             tools=[user_rag_tool, review_rag_tool],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
@@ -167,21 +169,24 @@ class CollaborativeCrew():
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
             tools=[item_rag_tool, review_rag_tool],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
     def reviewer(self) -> Agent:
         return Agent(
             config=self.agents_config['reviewer'], # type: ignore[index]
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
     def prediction_modeler(self) -> Agent:
         return Agent(
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @task

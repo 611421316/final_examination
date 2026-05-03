@@ -9,16 +9,14 @@ load_dotenv()
 from crewai_tools import JSONSearchTool
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
-embedding_model = HuggingFaceEmbeddings(
-    model_name='BAAI/bge-small-en-v1.5'
-)
+
 rag_config = {
     "embedding_model": {
         "provider": "sentence-transformer",
         "config": {
             "model_name": "BAAI/bge-small-en-v1.5"
         }
-    }
+    },
 }
 
 # Connect exactly to the collections created by your run_id=1 indexing script

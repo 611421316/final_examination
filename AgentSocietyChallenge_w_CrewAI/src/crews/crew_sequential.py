@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
-
 # Resolve project root (two levels up from src/crews/crew.py)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -13,11 +12,13 @@ from crewai_tools import JSONSearchTool
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
 print("Here is provider: ", llm_provider)
 if llm_provider == "nvidia":
-    os.environ["MODEL"] = f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}"
-    os.environ["OPENAI_API_BASE"] = os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
-    os.environ["OPENAI_API_KEY"] = os.getenv("NVIDIA_API_KEY", "")
+    default_llm = LLM(
+        model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
+        api_key=os.getenv("NVIDIA_API_KEY", ""),
+        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+    )
 else:
-    os.environ["MODEL"] = "ollama/phi3"
+    default_llm = LLM(model="ollama/phi3")
 
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
@@ -28,6 +29,17 @@ import os
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+NVIDIA_API_BASE_ROOT = "https://integrate.api.nvidia.com"
+NVIDIA_API_BASE_V1 = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
+
+# Keep OPENAI_API_KEY set so Pydantic validation in crewai_tools doesn't crash.
+# Do NOT set OPENAI_API_BASE — that would redirect Embedchain's local
+# sentence-transformer embedding calls to Nvidia (which returns 404).
+# The default_llm object already carries the Nvidia base_url for actual LLM calls.
+os.environ["OPENAI_API_KEY"] = NVIDIA_API_KEY
+
 with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
     eda_content = f.read()
 
@@ -37,18 +49,14 @@ eda_knowledge = StringKnowledgeSource(
 )
 
 
-# Workaround for early CrewAI-Tools versions that enforce OpenAI Key validation via Pydantic
-os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "NA")
-os.environ["CHROMA_OPENAI_API_KEY"] = "NA"
-
 # Embedding Model for converting text to numerical representations
 embedding_model = HuggingFaceEmbeddings(
     model_name='BAAI/bge-small-en-v1.5'
 )
-os.environ["OPENAI_API_KEY"] = "sk-dummy"
 rag_config = {
+    
     "embedder": {
-        "provider": "sentence-transformers",
+        "provider": "sentence-transformer",
         "config": {
             "model": "BAAI/bge-small-en-v1.5"
         }
@@ -160,7 +168,8 @@ class SequentialCrew():
     def internet_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config['internet_researcher'],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
@@ -168,7 +177,8 @@ class SequentialCrew():
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
             tools=[user_rag_tool, review_rag_tool],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
@@ -176,21 +186,23 @@ class SequentialCrew():
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
             tools=[item_rag_tool, review_rag_tool],
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @agent
     def prediction_modeler(self) -> Agent:
         return Agent(
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
-            verbose=True
+            verbose=True,
+            llm=default_llm
         )
 
     @task
     def analyze_user_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_user_task'], # type: ignore[index]
-            tools=[user_rag_tool],
+            tools=[user_rag_tool, review_rag_tool],
         )
 
     @task
@@ -229,12 +241,7 @@ class SequentialCrew():
                 self.predict_review_task(),
         ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge, eda_knowledge],
-            embedder={
-                "provider": "huggingface",
-                "config": {
-                    "model": "BAAI/bge-small-en-v1.5"
-                }
-            },
+            # knowledge_sources=[schema_knowledge, eda_knowledge],
+            embedder=rag_config["embedder"],
             verbose=True
         )
