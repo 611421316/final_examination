@@ -46,11 +46,11 @@ analyze_item_task:
 
 predict_review_task:
   description: >
-    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1.0 to 5.0) and write the Review Text.
+    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1 to 5) and write the Review Text.
     You MUST base your prediction on the actual data retrieved by the previous agents. Do NOT say the data was not found.
     Consider if the restaurant's features align with the user's historical preferences.
   expected_output: >
-    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1.0 to 5.0) and "review" (a string).
-    Use single curly braces. Example: {"stars": 4.5, "review": "The review text..."}
+    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1 to 5) and "review" (a string).
+    Use single curly braces. Example: {"stars": 4, "review": "The review text..."}
     Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
   agent: prediction_modeler

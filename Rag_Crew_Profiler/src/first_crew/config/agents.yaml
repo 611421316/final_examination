@@ -61,6 +61,6 @@ prediction_modeler:
   role: >
     Review Prediction Expert
   goal: >
-    Predict the exact Star rating (1.0 to 5.0) and generate a mock review text that user {user_id} would write for business {item_id}
+    Predict the exact Star rating (1 to 5) and generate a mock review text that user {user_id} would write for business {item_id}
   backstory: >
     You are a master of predicting human behavior. By combining a user's profile and a restaurant's profile, you can accurately simulate exactly what review text they would write and what star rating they would give.

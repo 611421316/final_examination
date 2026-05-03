@@ -70,7 +70,6 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
             conn.close()
         except Exception:
             pass
-
     if collection_exists:
         tool = JSONSearchTool(collection_name=collection_name, config=config)
         # CRITICAL: Force the Pydantic schema to hide json_path from the Agent, 

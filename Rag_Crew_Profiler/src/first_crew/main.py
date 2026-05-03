@@ -5,6 +5,7 @@ import json
 
 from first_crew.crew import FirstCrew
 from first_crew.flow import kickoff as flow_kickoff
+from first_crew.test_model import run_evaluation, calculate_metrics
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
