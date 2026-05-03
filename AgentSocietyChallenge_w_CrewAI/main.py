@@ -3,8 +3,6 @@ import sys
 import warnings
 import json
 
-from src.crews.crew_hierarchical import HierarchicalCrew
-from src.crews.crew_collaborative import CollaborativeCrew
 from src.crews.crew_sequential import SequentialCrew
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -55,12 +53,12 @@ def run():
     # === Step 7: Execute the Prediction ===
     try:
         mode = sys.argv[1].lower() if len(sys.argv) > 1 else "sequential"
-        if mode == "collaborative":
-            result = CollaborativeCrew().crew().kickoff(inputs=inputs)
-        elif mode == "hierarchical":
-            result = HierarchicalCrew().crew().kickoff(inputs=inputs)
-        else:
-            result = SequentialCrew().crew().kickoff(inputs=inputs)
+        # if mode == "collaborative":
+        #     result = CollaborativeCrew().crew().kickoff(inputs=inputs)
+        # elif mode == "hierarchical":
+        #     result = HierarchicalCrew().crew().kickoff(inputs=inputs)
+        # else:
+        result = SequentialCrew().crew().kickoff(inputs=inputs)
         
         # Parse and sanitize the LLM output into clean JSON
         report = extract_json_from_output(result)

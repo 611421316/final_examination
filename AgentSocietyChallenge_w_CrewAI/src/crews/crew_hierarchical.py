@@ -6,18 +6,21 @@ load_dotenv()
 # Resolve project root (two levels up from src/crews/crew_hierarchical.py)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# === LLM Provider Selection ===
+from crewai import Agent, Crew, Process, Task, LLM
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
 print(llm_provider)
 if llm_provider == "nvidia":
-    # Route through LiteLLM's OpenAI-compatible interface to Nvidia API
-    os.environ["MODEL"] = f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}"
-    os.environ["OPENAI_API_BASE"] = os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+    default_llm = LLM(
+        model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
+        api_key=os.getenv("NVIDIA_API_KEY", ""),
+        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+    )
+    # Set OPENAI_API_KEY only for Pydantic validation; do NOT set OPENAI_API_BASE
+    # (that would redirect local embedder calls to Nvidia → 404/conflict)
     os.environ["OPENAI_API_KEY"] = os.getenv("NVIDIA_API_KEY", "")
 else:
-    # Default to local Ollama Phi3
-    os.environ["MODEL"] = "ollama/phi3"
-from crewai import Agent, Crew, Process, Task
+    default_llm = LLM(model="ollama/phi3")
+
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from crewai_tools import JSONSearchTool
@@ -44,7 +47,7 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 rag_config = {
-    "embedding_model": {
+    "embedder": {
         "provider": "sentence-transformer",
         "config": {
             "model": "BAAI/bge-small-en-v1.5"
@@ -120,7 +123,7 @@ item_rag_tool = create_rag_tool(
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='data/test_review.json',
+    json_path='data/test_review_subset.json',
     collection_name='benchmark_true_fresh_index_Filtered_Review_1',
     config=rag_config,
     name="search_historical_reviews_data",

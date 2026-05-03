@@ -1,3 +1,4 @@
+from chromadb.config import Settings
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -30,6 +31,7 @@ import os
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 NVIDIA_API_BASE_ROOT = "https://integrate.api.nvidia.com"
 NVIDIA_API_BASE_V1 = "https://integrate.api.nvidia.com/v1"
 NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
@@ -38,7 +40,7 @@ NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
 # Do NOT set OPENAI_API_BASE — that would redirect Embedchain's local
 # sentence-transformer embedding calls to Nvidia (which returns 404).
 # The default_llm object already carries the Nvidia base_url for actual LLM calls.
-os.environ["OPENAI_API_KEY"] = NVIDIA_API_KEY
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
     eda_content = f.read()
@@ -63,7 +65,11 @@ rag_config = {
     "vectordb": {
         "provider": "chromadb",
         "config": {
-            "dir": "./data/my_chroma"
+            "settings": Settings(
+                persist_directory="data/my_chroma",
+                is_persistent=True
+            )
+
         }
     }
 }
@@ -80,9 +86,11 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     import os
     
     collection_exists = False
-    db_file = os.path.join(db_storage_path(), "chroma.sqlite3")
+    db_file = "data/my_chroma/chroma.sqlite3"
+    print("Check db_file")
     
     if os.path.exists(db_file):
+        print("db_file exists")
         try:
             # Check native sqlite3 for existing collection to heavily avoid 100% JSON text synchronous chunking bottleneck
             # and avoid ChromaDB singleton initialization conflicts with CrewAI's internal Settings
@@ -133,7 +141,7 @@ item_rag_tool = create_rag_tool(
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='data/test_review.json',
+    json_path='data/test_review_subset.json',
     collection_name='benchmark_true_fresh_index_Filtered_Review_1',
     config=rag_config,
     name="search_historical_reviews_data",

@@ -17,6 +17,12 @@ rag_config = {
             "model_name": "BAAI/bge-small-en-v1.5"
         }
     },
+    "vectordb": {
+        "provider": "chromadb",
+        "config": {
+            "dir": "./data/my_chroma",
+        }
+    }
 }
 
 # Connect exactly to the collections created by your run_id=1 indexing script
