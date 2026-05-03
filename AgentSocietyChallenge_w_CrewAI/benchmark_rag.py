@@ -16,12 +16,6 @@ rag_config = {
         "config": {
             "model_name": "BAAI/bge-small-en-v1.5"
         }
-    },
-    "vectordb": {
-        "provider": "chromadb",
-        "config": {
-            "dir": "./data/my_chroma",
-        }
     }
 }
 

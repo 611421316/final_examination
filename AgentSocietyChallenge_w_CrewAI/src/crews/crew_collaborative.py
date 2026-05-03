@@ -23,8 +23,19 @@ from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import JSONSearchTool
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 import os
-
 from langchain_community.embeddings import HuggingFaceEmbeddings
+
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+NVIDIA_API_BASE_ROOT = "https://integrate.api.nvidia.com"
+NVIDIA_API_BASE_V1 = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
+
+# Keep OPENAI_API_KEY set so Pydantic validation in crewai_tools doesn't crash.
+# Do NOT set OPENAI_API_BASE — that would redirect Embedchain's local
+# sentence-transformer embedding calls to Nvidia (which returns 404).
+# The default_llm object already carries the Nvidia base_url for actual LLM calls.
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
 with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
     eda_content = f.read()
@@ -34,14 +45,11 @@ eda_knowledge = StringKnowledgeSource(
     metadata={"source": "EDA for RAG"}
 )
 
-# Workaround for early CrewAI-Tools versions that enforce OpenAI Key validation via Pydantic
-os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "NA")
 
 # Embedding Model for converting text to numerical representations
 embedding_model = HuggingFaceEmbeddings(
     model_name='BAAI/bge-small-en-v1.5'
 )
-
 rag_config = {
     "embedding_model": {
         "provider": "sentence-transformer",
@@ -59,7 +67,7 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     import os
     
     collection_exists = False
-    db_file = os.path.join(os.getcwd(), "data", "my_chroma", "chroma.sqlite3")
+    db_file = "data/my_chroma/chroma.sqlite3"
     
     if os.path.exists(db_file):
         try:
@@ -112,7 +120,7 @@ item_rag_tool = create_rag_tool(
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='data/test_review_subset.json',
+    json_path='data/review_subset.json',
     collection_name='benchmark_true_fresh_index_Filtered_Review_1',
     config=rag_config,
     name="search_historical_reviews_data",

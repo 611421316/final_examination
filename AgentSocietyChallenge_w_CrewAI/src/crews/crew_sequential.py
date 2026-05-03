@@ -61,16 +61,6 @@ rag_config = {
         "config": {
             "model_name": "BAAI/bge-small-en-v1.5"
         }
-    },
-    "vectordb": {
-        "provider": "chromadb",
-        "config": {
-            "settings": Settings(
-                persist_directory="data/my_chroma",
-                is_persistent=True
-            )
-
-        }
     }
 }
 
@@ -107,8 +97,10 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
         # CRITICAL: Force the Pydantic schema to hide json_path from the Agent, 
         # so it doesn't trigger validation errors or pass the path and trigger the 3-hour hash loop!
         tool.args_schema = FixedJSONSearchToolSchema
+        print(f"Tool {collection_name} exists")
     else:
         tool = JSONSearchTool(json_path=json_path, collection_name=collection_name, config=config)
+        print(f"Tool {collection_name} created")
         
     tool.name = name
     tool.description = description
