@@ -3,12 +3,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-# Resolve project root (two levels up from src/crews/crew_hierarchical.py)
+# Resolve project root (two levels up from src/crews/crew.py)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # === LLM Provider Selection ===
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
-print(llm_provider)
+
 if llm_provider == "nvidia":
     # Route through LiteLLM's OpenAI-compatible interface to Nvidia API
     os.environ["MODEL"] = f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}"
@@ -45,26 +45,28 @@ embedding_model = HuggingFaceEmbeddings(
 
 rag_config = {
     "embedder": {
-        "provider": "huggingface",
-        "config": {"model": "BAAI/bge-small-en-v1.5"}
+        "provider": "sentence-transformers",
+        "config": {
+            "model": "BAAI/bge-small-en-v1.5"
+        }
     },
     "vectordb": {
         "provider": "chromadb",
         "config": {
-            "dir": "./data/my_persistent_chroma_db" # <-- Path to save embeddings
+            "dir": "./data/my_chroma"
         }
     }
 }
 
+
 # === Step 3: Configure RAG Tools (CrewAI RAG Tools) ===
 def create_rag_tool(json_path: str, collection_name: str, config: dict, name: str, description: str) -> JSONSearchTool:
-    from crewai.utilities.paths import db_storage_path
     from crewai_tools.tools.json_search_tool.json_search_tool import FixedJSONSearchToolSchema
     import sqlite3
     import os
     
     collection_exists = False
-    db_file = os.path.join(db_storage_path(), "chroma.sqlite3")
+    db_file = os.path.join(os.getcwd(), "data", "my_chroma", "chroma.sqlite3")
     
     if os.path.exists(db_file):
         try:
@@ -139,10 +141,10 @@ schema_knowledge = StringKnowledgeSource(
 )
 
 @CrewBase
-class HierarchicalCrew():
+class CollaborativeCrew():
     """Yelp Recommendation Crew"""
     agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')
-    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks_hierarchical.yaml')
+    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks_collaborative.yaml')
 
     # === Step 6: System Assembly & Tool Binding ===
     # Mount specific RAG Tools onto specific Agents
@@ -183,6 +185,13 @@ class HierarchicalCrew():
         )
 
     @task
+    def internet_research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['internet_research_task'],
+            agent=self.internet_researcher(),
+        )
+
+    @task
     def analyze_item_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_item_task'], # type: ignore[index]
@@ -195,36 +204,29 @@ class HierarchicalCrew():
             output_file='report.json'
         )
 
-    @agent
-    def project_manager(self) -> Agent:
-        return Agent(
-            config=self.agents_config["project_manager"],
-            tools=[],
-            verbose=True,
-            allow_delegation=True
-        )
-    
     @crew
     def crew(self) -> Crew:
         return Crew(
             agents=[
                 self.user_analyst(),
                 self.item_analyst(),
+                self.internet_researcher(),
                 self.prediction_modeler(),
             ],
             tasks=[
                 self.analyze_user_task(),
                 self.analyze_item_task(),
+                self.external_research_task(),
                 self.predict_review_task(),
-            ],
-            process=Process.hierarchical,
-            manager_agent=self.project_manager(),
-            knowledge_sources=[schema_knowledge],
+        ],
+            process=Process.sequential,
+            knowledge_sources=[schema_knowledge, eda_knowledge],
             embedder={
                 "provider": "huggingface",
                 "config": {
                     "model": "BAAI/bge-small-en-v1.5"
                 }
             },
-            verbose=True,
-    )
+            verbose=True
+        )
+

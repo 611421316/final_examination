@@ -1,5 +1,6 @@
 # === Step 5: Strictly Separated Task Definitions ===
-external_research_task:
+
+internet_research_task:
   description: >
     Provide general insights about restaurant reviews and rating behavior.
 
@@ -12,45 +13,118 @@ external_research_task:
     IMPORTANT:
     - Do NOT fabricate data about the specific user or item
     - Provide only general patterns
-    - Keep it concise
+    - Keep it concise (max 5 bullet points)
 
   expected_output: >
-    - 1–2 stars: Poor food quality, rude or slow service, long waiting time
-    - 3 stars: Average food, acceptable service, minor issues (e.g. price or wait)
-    - 4–5 stars: Delicious food, friendly service, pleasant atmosphere
+    Concise bullet points describing rating behavior patterns (1–2, 3, 4–5 stars).
+
   agent: internet_researcher
 
+
+# =========================
+# USER ANALYSIS
+# =========================
 analyze_user_task:
   description: >
-    Use the search_user_profile_data tool to find information about user {user_id}.
-    You MUST call the tool with a natural language search_query string, for example:
+    Analyze user {user_id} using available tools.
+
+    REQUIRED ACTIONS:
+    - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
+    - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
+    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
+
+    Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the review habits and average stars for user {user_id}"}}
-    Also use search_historical_reviews_data to find past reviews written by this user.
-    Understand their average stars, what words they commonly use, and their general sentiment.
+    Action Input: {{"search_query": "Information for user {user_id}"}}
+
+    Then:
+    - Identify average rating
+    - Identify sentiment tendency (positive/neutral/negative)
+    - Identify common keywords or preferences (e.g. food quality, service, price)
+
+    STRICT RULES:
+    - MUST use tool outputs
+    - ALWAYS include the EXACT string "{user_id}" in your search_query.
+    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+
   expected_output: >
-    A detailed markdown profile of user {user_id}'s preferences and rating habits.
+    A structured markdown report including:
+    - Average rating
+    - Sentiment tendency
+    - Key preferences
+    - Notable behavior patterns
+
   agent: user_analyst
 
+
+# =========================
+# ITEM ANALYSIS
+# =========================
 analyze_item_task:
   description: >
-    Use the search_restaurant_feature_data tool to find information about business {item_id}.
-    You MUST call the tool with a natural language search_query string, for example:
+    Analyze business {item_id} using available tools.
+
+    REQUIRED ACTIONS:
+    - Step 1: Call search_restaurant_feature_data using the EXACT item_id {item_id}.
+    - Step 2: Call search_historical_reviews_data using the EXACT item_id {item_id}.
+    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
+
+    Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the categories and star rating for business {item_id}"}}
-    Also use search_historical_reviews_data to find past reviews about this business.
-    Understand its categories, attributes, and overall public sentiment.
+    Action Input: {{"search_query": "Information for item {item_id}"}}
+
+    Then:
+    - Identify categories (e.g. restaurant type)
+    - Identify strengths (pros)
+    - Identify weaknesses (cons)
+    - Identify general sentiment from reviews
+
+    STRICT RULES:
+    - MUST use tool outputs
+    - ALWAYS include the EXACT string "{item_id}" in your search_query.
+    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+
   expected_output: >
-    A detailed markdown report of business {item_id}'s features, pros, and cons.
+    A structured markdown report including:
+    - Categories
+    - Strengths (pros)
+    - Weaknesses (cons)
+    - Overall sentiment
+
   agent: item_analyst
 
+
+# =========================
+# FINAL PREDICTION
+# =========================
 predict_review_task:
   description: >
-    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1 to 5) and write the Review Text.
-    You MUST base your prediction on the actual data retrieved by the previous agents. Do NOT say the data was not found.
-    Consider if the restaurant's features align with the user's historical preferences.
+    Predict the rating and generate a review based on:
+
+    - User Profile (from analyze_user_task)
+    - Item Report (from analyze_item_task)
+    - General patterns (from external_research_task)
+
+    REASONING REQUIREMENTS:
+    - Compare user preferences vs item characteristics
+    - Determine if the item matches the user's expectations
+    - Adjust rating accordingly
+
+    STRICT RULES:
+    - MUST use previous task outputs
+    - DO NOT say "data not found"
+    - DO NOT hallucinate unrelated facts
+    - Keep reasoning implicit (DO NOT print reasoning)
+
   expected_output: >
-    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1 to 5) and "review" (a string).
-    Use single curly braces. Example: {"stars": 4, "review": "The review text..."}
-    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+    Output ONLY a valid JSON object:
+    {"stars": <float 1-5>, "review": "<natural review text>"}
+
+    RULES:
+    - stars must be a number between 1.0 and 5.0
+    - review must be realistic and consistent with stars
+    - NO explanation
+    - NO markdown
+    - NO extra text
+
   agent: prediction_modeler
