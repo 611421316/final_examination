@@ -54,11 +54,10 @@ embedding_model = HuggingFaceEmbeddings(
     model_name='BAAI/bge-small-en-v1.5'
 )
 rag_config = {
-    
-    "embedder": {
+    "embedding_model": {
         "provider": "sentence-transformer",
         "config": {
-            "model": "BAAI/bge-small-en-v1.5"
+            "model_name": "BAAI/bge-small-en-v1.5"
         }
     },
     "vectordb": {
@@ -242,6 +241,6 @@ class SequentialCrew():
         ],
             process=Process.sequential,
             # knowledge_sources=[schema_knowledge, eda_knowledge],
-            embedder=rag_config["embedder"],
+            embedder=rag_config["embedding_model"],
             verbose=True
         )

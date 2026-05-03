@@ -44,8 +44,8 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 rag_config = {
-    "embedder": {
-        "provider": "sentence-transformers",
+    "embedding_model": {
+        "provider": "sentence-transformer",
         "config": {
             "model": "BAAI/bge-small-en-v1.5"
         }
@@ -221,11 +221,6 @@ class HierarchicalCrew():
             process=Process.hierarchical,
             manager_agent=self.project_manager(),
             knowledge_sources=[schema_knowledge],
-            embedder={
-                "provider": "huggingface",
-                "config": {
-                    "model": "BAAI/bge-small-en-v1.5"
-                }
-            },
+            embedder=rag_config["embedding_model"],
             verbose=True,
     )

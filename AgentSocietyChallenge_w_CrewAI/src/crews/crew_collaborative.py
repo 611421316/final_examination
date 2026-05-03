@@ -43,16 +43,10 @@ embedding_model = HuggingFaceEmbeddings(
 )
 
 rag_config = {
-    "embedder": {
-        "provider": "sentence-transformers",
+    "embedding_model": {
+        "provider": "sentence-transformer",
         "config": {
-            "model": "BAAI/bge-small-en-v1.5"
-        }
-    },
-    "vectordb": {
-        "provider": "chromadb",
-        "config": {
-            "dir": "./data/my_chroma"
+            "model_name": "BAAI/bge-small-en-v1.5"
         }
     }
 }
