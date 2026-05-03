@@ -1,0 +1,52 @@
+retrieve_data_task:
+  description: >
+    Use the tool to retrieve all background data for User ID "{user_id}" and Item ID "{item_id}".
+    You MUST use the Interaction Tool Wrapper to query data.
+    You MUST pass a valid JSON dictionary as Action Input, following these exact formats:
+
+    First, query the user profile:
+    Action: Interaction Tool Wrapper
+    Action Input: {{"query_type": "user", "target_id": "{user_id}"}}
+
+    Then, query the item details:
+    Action: Interaction Tool Wrapper
+    Action Input: {{"query_type": "item", "target_id": "{item_id}"}}
+
+    Then, query the user's historical reviews:
+    Action: Interaction Tool Wrapper
+    Action Input: {{"query_type": "review_by_user", "target_id": "{user_id}"}}
+
+    query_type must be exactly one of: "user", "item", "review_by_user", "review_by_item".
+    You MUST complete all three tool calls above, then compile all results into a summary.
+  expected_output: >
+    A markdown summary listing the user's historical preferences, average rating, rating distribution, and the target item's key attributes.
+  agent: data_retriever
+
+analyze_preference_task:
+  description: >
+    Review the retrieved data for User "{user_id}" and Item "{item_id}", and perform a deep compatibility analysis.
+    Pay special attention to:
+    1. The user's AVERAGE star rating across all their reviews. If they average 3.2 stars, they are a critical reviewer.
+    2. The user's rating DISTRIBUTION - do they mostly give 1-2 stars, 3 stars, or 4-5 stars?
+    3. Whether this item's category/features align with things the user has rated highly or poorly before.
+    4. Do NOT assume the user will like the item. Many users are critical and give low ratings.
+  expected_output: >
+    A psychological analysis report that includes the user's average rating tendency, likely satisfaction level with this specific item, and a preliminary rating estimate with justification.
+  agent: psychological_analyst
+
+simulate_review_task:
+  description: >
+    Based on the preference analysis above, produce the final simulated rating and review.
+    CRITICAL RULES:
+    1. Your star rating MUST reflect the user's actual rating habits. If the user averages 3.0 stars, do NOT give 4.5.
+    2. Write the review in ENGLISH, matching the user's typical vocabulary and tone.
+    3. Be willing to give ratings of 1, 2, or 3 stars if the analysis suggests the user would be critical.
+    4. Your response must contain ONLY a valid JSON object in this exact format:
+    {{"stars": 3.0, "review": "The review text in English..."}}
+    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+  expected_output: >
+    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1.0 to 5.0) and "review" (a string in English).
+    Example: {"stars": 3.0, "review": "The food was decent but nothing special..."}
+    Do NOT include any text before or after the JSON object.
+  agent: behavior_simulator
+  
