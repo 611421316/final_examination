@@ -77,31 +77,10 @@ class CacheInteractionTool:
                     )
 
     def _iter_file(self, filename: str) -> Iterator[Dict]:
-        """Iterate through JSONL line by line.
-
-        Also supports a single-line pointer file (relative path to another JSONL),
-        for toy datasets checked out on Windows where symlinks become plain text.
-        """
+        """Iterate through file line by line."""
         file_path = os.path.join(self.data_dir, filename)
         with open(file_path, 'r', encoding='utf-8') as file:
-            raw = file.read()
-        text = raw.strip()
-        if not text:
-            return
-        if "\n" not in text and not text.lstrip().startswith("{"):
-            target = os.path.normpath(
-                os.path.join(os.path.abspath(self.data_dir), text)
-            )
-            if os.path.isfile(target):
-                with open(target, "r", encoding="utf-8") as file:
-                    for line in file:
-                        line = line.strip()
-                        if line:
-                            yield json.loads(line)
-                return
-        for line in raw.splitlines():
-            line = line.strip()
-            if line:
+            for line in file:
                 yield json.loads(line)
 
     def get_user(self, user_id: str) -> Optional[Dict]:
