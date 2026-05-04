@@ -3,10 +3,27 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-# Resolve project root (two levels up from src/crews/crew_hierarchical.py)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+CHROMA_DIR = _PROJECT_ROOT / "data" / "my_chroma"
+os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
+os.makedirs(CHROMA_DIR, exist_ok=True)
+from crewai import Agent, Crew, Process, Task, LLM
+from crewai_tools import JSONSearchTool
+from crewai.project import CrewBase, agent, crew, task
+# === LLM Provider Selection ===
+llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
+print("Here is provider: ", llm_provider)
+if llm_provider == "nvidia":
+    default_llm = LLM(
+        model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
+        api_key=os.getenv("NVIDIA_API_KEY", ""),
+        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+    )
+else:
+    default_llm = LLM(model="ollama/phi3")
 
 from crewai import Agent, Crew, Process, Task, LLM
+from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
@@ -52,8 +69,10 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     
     collection_exists = False
     db_file = "data/my_chroma/chroma.sqlite3"
+    print("Check db_file")
     
     if os.path.exists(db_file):
+        print("db_file exists")
         try:
             # Check native sqlite3 for existing collection to heavily avoid 100% JSON text synchronous chunking bottleneck
             # and avoid ChromaDB singleton initialization conflicts with CrewAI's internal Settings
@@ -65,14 +84,20 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
             conn.close()
         except Exception:
             pass
+    print("[DEBUG] FINAL COLLECTION CHECK")
+    print(f"Collection Exists: {collection_exists}")
     if collection_exists:
+        print(f"Tool {collection_name} exists")
+        print(f"[DEBUG] Using collection: {collection_name}")
+        print(f"[DEBUG] JSON source: {json_path}")
         tool = JSONSearchTool(collection_name=collection_name, config=config)
-        # CRITICAL: Force the Pydantic schema to hide json_path from the Agent, 
-        # so it doesn't trigger validation errors or pass the path and trigger the 3-hour hash loop!
         tool.args_schema = FixedJSONSearchToolSchema
     else:
         tool = JSONSearchTool(json_path=json_path, collection_name=collection_name, config=config)
-        
+        print(f"Tool {collection_name} created")
+        print(f"[DEBUG] Using collection: {collection_name}")
+        print(f"[DEBUG] JSON source: {json_path}")
+    
     tool.name = name
     tool.description = description
     return tool
@@ -104,7 +129,7 @@ item_rag_tool = create_rag_tool(
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='data/review_subset.json',
+    json_path='data/test_review_subset.json',
     collection_name='benchmark_true_fresh_index_Filtered_Review_1',
     config=rag_config,
     name="search_historical_reviews_data",
@@ -115,7 +140,6 @@ review_rag_tool = create_rag_tool(
         "Do NOT pass raw user_id, item_id, or JSON objects directly."
     )
 )
-
 # === Step 2: Inject Global Background Knowledge (CrewAI Knowledge) ===
 with open('docs/Yelp Data Translation.md', 'r', encoding='utf-8') as f:
     schema_content = f.read()
@@ -140,7 +164,9 @@ class HierarchicalCrew():
             config=self.agents_config['user_analyst'], # type: ignore[index]
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
-            llm=default_llm
+            llm=default_llm,
+            max_iter=2,
+            max_retry_limit=1
         )
 
     @agent
@@ -149,7 +175,9 @@ class HierarchicalCrew():
             config=self.agents_config['item_analyst'], # type: ignore[index]
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
-            llm=default_llm
+            llm=default_llm,
+            max_iter=2,
+            max_retry_limit=1
         )
 
     @agent
@@ -157,7 +185,9 @@ class HierarchicalCrew():
         return Agent(
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
-            llm=default_llm
+            llm=default_llm,
+            max_iter=2,
+            max_retry_limit=1
         )
 
     @task
