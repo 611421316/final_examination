@@ -46,6 +46,18 @@ if USE_MOCK:
 else:
     from dotenv import load_dotenv
     load_dotenv()
+
+    # 🚨 FORCE NVIDIA CONFIG (CRITICAL FIX)
+
+    os.environ["MODEL"] = "openai/meta/llama-3.1-8b-instruct"
+
+    os.environ["OPENAI_MODEL_NAME"] = "openai/meta/llama-3.1-8b-instruct"
+
+    # 👉 map NVIDIA → OpenAI-compatible
+
+    os.environ["OPENAI_API_KEY"] = os.getenv("NVIDIA_API_KEY", "")
+
+    os.environ["OPENAI_API_BASE"] = os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
     api_key = os.environ.get("OPENAI_API_KEY", "")
     api_base = os.environ.get("OPENAI_API_BASE", "")
     print(f"⚙️  模式: 真實 LLM (NVIDIA NIM)")
