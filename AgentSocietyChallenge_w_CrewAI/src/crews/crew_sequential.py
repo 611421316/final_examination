@@ -5,10 +5,11 @@ from dotenv import load_dotenv
 load_dotenv()
 # Resolve project root (two levels up from src/crews/crew.py)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
+CHROMA_DIR = _PROJECT_ROOT / "data" / "my_chroma"
+os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
+os.makedirs(CHROMA_DIR, exist_ok=True)
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai_tools import JSONSearchTool
-
 # === LLM Provider Selection ===
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
 print("Here is provider: ", llm_provider)
@@ -92,16 +93,20 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
             conn.close()
         except Exception:
             pass
+    print("[DEBUG] FINAL COLLECTION CHECK")
+    print(f"Collection Exists: {collection_exists}")
     if collection_exists:
-        tool = JSONSearchTool(collection_name=collection_name, config=config)
-        # CRITICAL: Force the Pydantic schema to hide json_path from the Agent, 
-        # so it doesn't trigger validation errors or pass the path and trigger the 3-hour hash loop!
-        tool.args_schema = FixedJSONSearchToolSchema
         print(f"Tool {collection_name} exists")
+        print(f"[DEBUG] Using collection: {collection_name}")
+        print(f"[DEBUG] JSON source: {json_path}")
+        tool = JSONSearchTool(collection_name=collection_name, config=config)
+        tool.args_schema = FixedJSONSearchToolSchema
     else:
         tool = JSONSearchTool(json_path=json_path, collection_name=collection_name, config=config)
         print(f"Tool {collection_name} created")
-        
+        print(f"[DEBUG] Using collection: {collection_name}")
+        print(f"[DEBUG] JSON source: {json_path}")
+    
     tool.name = name
     tool.description = description
     return tool
@@ -177,7 +182,9 @@ class SequentialCrew():
             config=self.agents_config['user_analyst'], # type: ignore[index]
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
-            llm=default_llm
+            llm=default_llm,
+            max_iter=2,
+            max_retry_limit=1,
         )
 
     @agent
