@@ -61,7 +61,7 @@ from crewai_simulation_agent import CrewAISimulationAgent
 logging.basicConfig(level=logging.INFO)
 
 print("\n" + "=" * 60)
-print("🚀 啟動 AgentSociety CrewAI 整合測試 (End-to-End)")
+print("[RUN] 啟動 AgentSociety CrewAI 整合測試 (End-to-End)")
 print("=" * 60)
 
 try:
@@ -72,23 +72,23 @@ try:
     simulator.set_agent(CrewAISimulationAgent)
 
     # 2. 運行模擬
-    print("\n⚙️  開始推論...")
+    print("\n[...] 開始推論...")
     outputs = simulator.run_simulation(number_of_tasks=None, enable_threading=True, max_workers=2)
 
-    print("\n🏆 引擎運算完畢，最終產出:")
+    print("\n[OUT] 引擎運算完畢，最終產出:")
     print("-" * 60)
     print(json.dumps(outputs, indent=2, ensure_ascii=False))
     print("-" * 60)
 
     # 3. 官方評分
-    print("\n📊 呼叫官方評分系統 (simulator.evaluate())...")
+    print("\n[EVAL] 呼叫官方評分系統 (simulator.evaluate())...")
     evaluation_results = simulator.evaluate()
-    print("💡 競賽衡量結果:")
+    print("[EVAL] 競賽衡量結果:")
     print(json.dumps(evaluation_results, indent=2, ensure_ascii=False))
 
-    print("\n✅ 整合測試完成！")
+    print("\n[OK] 整合測試完成！")
 
 except Exception as e:
-    print(f"\n❌ 測試中斷: {e}")
+    print(f"\n[FAIL] 測試中斷: {e}")
     import traceback
     traceback.print_exc()
