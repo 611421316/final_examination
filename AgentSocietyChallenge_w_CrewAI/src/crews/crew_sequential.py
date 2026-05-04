@@ -256,7 +256,7 @@ class SequentialCrew():
                 self.predict_review_task(),
         ],
             process=Process.sequential,
-            # knowledge_sources=[schema_knowledge, eda_knowledge],
+            knowledge_sources=[schema_knowledge, eda_knowledge],
             embedder=rag_config["embedding_model"],
             verbose=True
         )
