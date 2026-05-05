@@ -48,6 +48,7 @@ else:
     load_dotenv()
 
     # 🚨 FORCE NVIDIA CONFIG (CRITICAL FIX)
+    os.environ["LLM_PROVIDER"] = "nvidia"
 
     os.environ["MODEL"] = "openai/meta/llama-3.1-8b-instruct"
 
