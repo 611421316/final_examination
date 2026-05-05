@@ -1,0 +1,47 @@
+{
+  "run_timestamp": "20260505_111301",
+  "mode": "real_llm",
+  "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+  "config": {
+    "threads": 1,
+    "timeout_seconds": 300,
+    "tasks_run": 1,
+    "tasks_total": 41
+  },
+  "timing": {
+    "init_seconds": 5.37,
+    "inference_seconds": 59.48,
+    "total_seconds": 64.85,
+    "avg_task_seconds": 59.48,
+    "min_task_seconds": 59.48,
+    "max_task_seconds": 59.48
+  },
+  "errors": 1,
+  "evaluation": {
+    "type": "simulation",
+    "metrics": {
+      "preference_estimation": 0.19999999999999996,
+      "review_generation": 0.4544667542173062,
+      "overall_quality": 0.3272333771086531
+    },
+    "data_info": {
+      "evaluated_count": 1,
+      "original_simulation_count": 1,
+      "original_ground_truth_count": 41
+    }
+  },
+  "per_task_outputs": [
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "JTqQ9C9S2Qc8_aHtO1965g",
+        "item_id": "QGYzYUMsQe6k7__LD91E5w"
+      },
+      "error": "litellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - {'status': 429, 'title': 'Too Many Requests'}",
+      "output": {
+        "stars": 0.0,
+        "review": "Error: litellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - {'status': 429, 'title': 'Too Many Requests'}"
+      }
+    }
+  ]
+}

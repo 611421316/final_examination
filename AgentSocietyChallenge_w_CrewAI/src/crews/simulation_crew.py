@@ -14,43 +14,44 @@ class SimulationCrew():
     tasks_config = '../../config/tasks_simulator.yaml'
 
     @agent
-    def data_retriever(self) -> Agent:
+    def user_analyst(self) -> Agent:
         return Agent(
-            config=self.agents_config['data_retriever'],
+            config=self.agents_config['user_analyst'],
             verbose=False,
             tools=[get_interaction_tool()] # 綁定我們的注入式 Tool wrapper
         )
 
     @agent
-    def psychological_analyst(self) -> Agent:
+    def item_analyst(self) -> Agent:
         return Agent(
-            config=self.agents_config['psychological_analyst'],
-            verbose=False
+            config=self.agents_config['item_analyst'],
+            verbose=False,
+            tools=[get_interaction_tool()] # 綁定我們的注入式 Tool wrapper
         )
 
     @agent
-    def behavior_simulator(self) -> Agent:
+    def prediction_modeler(self) -> Agent:
         return Agent(
-            config=self.agents_config['behavior_simulator'],
+            config=self.agents_config['prediction_modeler'],
             verbose=False
         )
 
     @task
-    def retrieve_data_task(self) -> Task:
+    def analyze_user_task(self) -> Task:
         return Task(
-            config=self.tasks_config['retrieve_data_task']
+            config=self.tasks_config['analyze_user_task']
         )
 
     @task
-    def analyze_preference_task(self) -> Task:
+    def analyze_item_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_preference_task']
+            config=self.tasks_config['analyze_item_task']
         )
 
     @task
-    def simulate_review_task(self) -> Task:
+    def predict_review_task(self) -> Task:
         return Task(
-            config=self.tasks_config['simulate_review_task']
+            config=self.tasks_config['predict_review_task']
         )
 
     @crew
