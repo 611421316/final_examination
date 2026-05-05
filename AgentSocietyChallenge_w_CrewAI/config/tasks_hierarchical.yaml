@@ -1,36 +1,73 @@
-# === Step 5: Strictly Separated Task Definitions ===
-
 analyze_user_task:
   description: >
-    Use the search_user_profile_data tool to find information about user {user_id}.
-    You MUST call the tool with a natural language search_query string, for example:
-    Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the review habits and average stars for user {user_id}"}}
-    Also use search_historical_reviews_data to find past reviews written by this user.
-    Understand their average stars, what words they commonly use, and their general sentiment.
+    Find the exact profile and historical reviews for user_id "{user_id}".
+
+    TOOL CALL RULES:
+    - You MUST use search_user_profile_data with exactly this JSON format:
+      {{"search_query": "Find exact user profile for user_id {user_id}"}}
+    - You MUST use search_historical_reviews_data with exactly this JSON format:
+      {{"search_query": "Find reviews written by user_id {user_id}"}}
+    - NEVER pass raw fields like {{"user_id": "{user_id}"}}.
+    - NEVER use SQL.
+    - Only use information returned by the tools.
+
+    Analyze:
+    - average stars
+    - review count
+    - rating tendency
+    - common review patterns
+    - sentiment tendency
+
   expected_output: >
     A detailed markdown profile of user {user_id}'s preferences and rating habits.
+    If exact user data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
   agent: user_analyst
+
 
 analyze_item_task:
   description: >
-    Use the search_restaurant_feature_data tool to find information about business {item_id}.
-    You MUST call the tool with a natural language search_query string, for example:
-    Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the categories and star rating for business {item_id}"}}
-    Also use search_historical_reviews_data to find past reviews about this business.
-    Understand its categories, attributes, and overall public sentiment.
+    Find the exact business profile and historical reviews for item_id "{item_id}".
+
+    TOOL CALL RULES:
+    - You MUST use search_restaurant_feature_data with exactly this JSON format:
+      {{"search_query": "Find exact business profile for item_id {item_id}"}}
+    - You MUST use search_historical_reviews_data with exactly this JSON format:
+      {{"search_query": "Find reviews about business item_id {item_id}"}}
+    - NEVER pass raw fields like {{"item_id": "{item_id}"}}.
+    - NEVER use SQL.
+    - Only use information returned by the tools.
+
+    Analyze:
+    - categories
+    - stars
+    - review count
+    - strengths
+    - weaknesses
+    - public sentiment
+
   expected_output: >
     A detailed markdown report of business {item_id}'s features, pros, and cons.
+    If exact business data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
   agent: item_analyst
+
 
 predict_review_task:
   description: >
-    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1 to 5) and write the Review Text.
-    You MUST base your prediction on the actual data retrieved by the previous agents. Do NOT say the data was not found.
-    Consider if the restaurant's features align with the user's historical preferences.
+    Using the User Profile and Item Report from the previous tasks, predict the Stars and Review Text.
+
+    RULES:
+    - Base the prediction only on retrieved evidence from previous tasks.
+    - Do NOT claim data was not found unless both previous tasks explicitly failed.
+    - Consider alignment between user rating habits and restaurant quality.
+    - Stars must be an integer from 1 to 5.
+    - Review must sound like a realistic Yelp-style review.
+
   expected_output: >
-    Output ONLY a valid JSON object with exactly two keys: "stars" (an integer from 1 to 5) and "review" (a string).
-    Use single curly braces. Example: {"stars": 4, "review": "The review text..."}
-    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+    Output ONLY one valid JSON object with exactly two keys: stars and review.
+    Example output:
+    {{"stars": 4, "review": "The review text..."}}
+
+    Do NOT include markdown.
+    Do NOT include explanations.
+    Do NOT include any text before or after the JSON.
   agent: prediction_modeler

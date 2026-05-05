@@ -165,8 +165,6 @@ class HierarchicalCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -176,8 +174,6 @@ class HierarchicalCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -186,8 +182,6 @@ class HierarchicalCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task

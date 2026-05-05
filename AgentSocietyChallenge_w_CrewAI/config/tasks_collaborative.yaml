@@ -1,46 +1,4 @@
 # === Step 5: Strictly Separated Task Definitions ===
-
-internet_research_task:
-  description: >
-    Provide general insights about restaurant reviews and rating behavior.
-
-    Focus on:
-    - What makes users give 1–2 stars
-    - What makes users give 3 stars
-    - What makes users give 4–5 stars
-    - Common factors: food, service, price, waiting time, atmosphere
-
-    IMPORTANT:
-    - Do NOT fabricate data about the specific user or item
-    - Provide only general patterns
-    - Keep it concise
-
-  expected_output: >
-    Concise bullet points about general restaurant rating patterns.
-  agent: internet_researcher
-
-
-analyze_user_task:
-  description: >
-    Use the search_user_profile_data tool to find information about user {user_id}.
-
-    You MUST call the tool with a natural language search_query string, for example:
-    Action: search_user_profile_data
-    Action Input: {"search_query": "What are the review habits and average stars for user {user_id}"}
-
-    Also use search_historical_reviews_data to find past reviews written by this user.
-
-    Analyze:
-    - Average star rating
-    - Commonly used words
-    - Food/service/price/atmosphere preferences
-    - General sentiment and rating behavior
-
-  expected_output: >
-    A detailed markdown profile of user {user_id}'s preferences and rating habits.
-  agent: user_analyst
-
-
 analyze_item_task:
   description: >
     Use the search_restaurant_feature_data tool to find information about business {item_id}.

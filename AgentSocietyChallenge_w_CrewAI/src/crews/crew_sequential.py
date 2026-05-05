@@ -169,8 +169,6 @@ class SequentialCrew():
             config=self.agents_config['internet_researcher'],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -180,8 +178,6 @@ class SequentialCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1,
         )
 
     @agent
@@ -191,8 +187,6 @@ class SequentialCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -201,17 +195,13 @@ class SequentialCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
     def analyze_user_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_user_task'], # type: ignore[index]
-            tools=[user_rag_tool, review_rag_tool],
-            max_iter=2,
-            max_retry_limit=1
+            tools=[user_rag_tool, review_rag_tool]
         )
 
     @task
@@ -219,25 +209,19 @@ class SequentialCrew():
         return Task(
             config=self.tasks_config['internet_research_task'],
             agent=self.internet_researcher(),
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
     def analyze_item_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_item_task'], 
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
     def predict_review_task(self) -> Task:
         return Task(
             config=self.tasks_config['predict_review_task'], # type: ignore[index]
-            output_file='report.json',
-            max_iter=2,
-            max_retry_limit=1
+            output_file='report.json'
         )
 
     @crew

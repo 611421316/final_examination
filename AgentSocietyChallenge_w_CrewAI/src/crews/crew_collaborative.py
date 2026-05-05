@@ -166,8 +166,6 @@ class CollaborativeCrew():
             config=self.agents_config['internet_researcher'],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -177,8 +175,6 @@ class CollaborativeCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -188,8 +184,6 @@ class CollaborativeCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -198,8 +192,6 @@ class CollaborativeCrew():
             config=self.agents_config['reviewer'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @agent
@@ -208,8 +200,6 @@ class CollaborativeCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
