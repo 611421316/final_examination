@@ -8,6 +8,7 @@ requires-python = ">=3.10"
 dependencies = [
     "crewai-tools>=1.14.1",
     "crewai[litellm]>=1.14.1",
+    "gdown>=6.0.0",
     "langchain-community>=0.4.1",
     "langchain-openai>=1.2.1",
     "litellm>=1.83.0",

@@ -48,34 +48,47 @@ class InferenceState(BaseModel):
     generated_review: str = ""
 
 class AgentSocietyServingFlow(Flow[InferenceState]):
+
     @start()
     def init_request(self):
-        # 初始化階段，紀錄收到的 user_id 和 item_id
-        pass
+        return self.state.model_dump()
 
     @listen(init_request)
     def trigger_crew_inference(self):
-        # 定義傳遞到任務 {user_id} 與 {item_id} 變數的值
         inputs = {
-            'user_id': self.state.user_id,
-            'item_id': self.state.item_id
+            "user_id": self.state.user_id,
+            "item_id": self.state.item_id
         }
-        
-        # 啟動並執行 Crew AI 團隊
-        result = SimulationCrew().crew().kickoff(inputs=inputs)
-        
-        # 使用多層 Regex 容錯解析 LLM 的回傳結果
-        try:
-            if result.pydantic:
-                data = result.pydantic.model_dump()
-            else:
-                data = extract_json_from_output(result.raw)
 
-            self.state.predicted_rating = float(data.get('stars', data.get('predicted_rating', 4.0)))
-            self.state.generated_review = str(data.get('review', data.get('generated_review', 'Good.')))
-        except Exception:
-            # 最終備援：把整段 raw output 當 review 用
+        result = None
+        try:
+            result = SimulationCrew().crew().kickoff(inputs=inputs)
+            data = None
+            pydantic_obj = getattr(result, "pydantic", None)
+
+            if pydantic_obj is not None and not callable(pydantic_obj):
+                data = pydantic_obj.model_dump()
+
+            if data is None:
+                raw = getattr(result, "raw", str(result))
+                data = extract_json_from_output(raw)
+
+            if not isinstance(data, dict):
+                data = extract_json_from_output(str(data))
+
+            self.state.predicted_rating = float(
+                data.get("stars", data.get("predicted_rating", 4.0))
+            )
+            self.state.generated_review = str(
+                data.get("review", data.get("generated_review", "Good."))
+            )
+
+        except Exception as e:
+            raw = getattr(result, "raw", str(result)) if result else str(e)
+            print("Parse error:", e)
+            print("Raw result:", raw)
+
             self.state.predicted_rating = 4.0
-            self.state.generated_review = str(result.raw)
+            self.state.generated_review = raw
 
         return self.state.model_dump()

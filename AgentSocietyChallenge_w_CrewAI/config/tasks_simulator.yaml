@@ -6,11 +6,11 @@ analyze_user_task:
     
     First, query the user profile:
     Action: Interaction Tool Wrapper
-    Action Input: {"query_type": "user", "target_id": "{user_id}"}
+    Action Input: {{"query_type": "user", "target_id": "{user_id}"}}
     
     Then, query the user's historical reviews:
     Action: Interaction Tool Wrapper
-    Action Input: {"query_type": "review_by_user", "target_id": "{user_id}"}
+    Action Input: {{"query_type": "review_by_user", "target_id": "{user_id}"}}
     
     Understand their average stars, what words they commonly use, and their general sentiment.
   expected_output: >
@@ -25,11 +25,11 @@ analyze_item_task:
     
     First, query the item details:
     Action: Interaction Tool Wrapper
-    Action Input: {"query_type": "item", "target_id": "{item_id}"}
+    Action Input: {{"query_type": "item", "target_id": "{item_id}"}}
     
     Then, query the item's historical reviews:
     Action: Interaction Tool Wrapper
-    Action Input: {"query_type": "review_by_item", "target_id": "{item_id}"}
+    Action Input: {{"query_type": "review_by_item", "target_id": "{item_id}"}}
     
     Understand its categories, attributes, and overall public sentiment.
   expected_output: >
@@ -43,6 +43,6 @@ predict_review_task:
     Consider if the restaurant's features align with the user's historical preferences.
   expected_output: >
     Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1.0 to 5.0) and "review" (a string).
-    Example: {"stars": 4.5, "review": "The review text..."}
+    Example: {{"stars": 4.5, "review": "The review text..."}}
     Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
   agent: prediction_modeler

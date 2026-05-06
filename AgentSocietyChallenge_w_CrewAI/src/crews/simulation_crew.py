@@ -57,8 +57,8 @@ class SimulationCrew():
     @crew
     def crew(self) -> Crew:
         return Crew(
-            agents=self.agents,
-            tasks=self.tasks,
+            agents=[self.user_analyst(), self.item_analyst(), self.prediction_modeler()],
+            tasks=[self.analyze_user_task(), self.analyze_item_task(), self.predict_review_task()],
             process=Process.sequential,
             verbose=True
         )
