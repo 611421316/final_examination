@@ -31,12 +31,15 @@ analyze_user_task:
   description: >
     Analyze user {user_id} using available RAG tools.
 
-    REQUIRED ACTIONS:
-    - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
-    - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
-    - Call tools ONE AT A TIME.
-    - The ONLY valid input key for the tools is "search_query". Do NOT use "user_id" as a key.
-    - ALWAYS pass the "{user_id}" inside the search_query string. Do NOT pass a JSON object with user_id.
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "user_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    
+    Example:
+    Action: search_user_profile_data
+    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
 
     Then analyze:
     - Average rating behavior
@@ -66,12 +69,15 @@ analyze_item_task:
   description: >
     Analyze business {item_id} using available RAG tools.
 
-    REQUIRED ACTIONS:
-    - Step 1: Call search_restaurant_feature_data using the EXACT item_id {item_id}.
-    - Step 2: Call search_historical_reviews_data using the EXACT item_id {item_id}.
-    - Call tools ONE AT A TIME.
-    - The ONLY valid input key for the tools is "search_query". Do NOT use "item_id" as a key.
-    - ALWAYS pass the "{item_id}" inside the search_query string. Do NOT pass a JSON object with item_id.
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "item_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    
+    Example:
+    Action: search_restaurant_feature_data
+    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
 
     Then analyze:
     - Restaurant categories

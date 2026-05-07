@@ -38,6 +38,7 @@ project_manager:
     FINAL RULE:
     - Final task MUST go to "Review Prediction Expert"
     - DO NOT generate final answer yourself
+    - When delegating, remind agents that "search_query" is the ONLY valid tool input key.
 
 user_analyst:
   role: >
@@ -47,6 +48,11 @@ user_analyst:
   backstory: >
     You are an expert behavior analyst. You read a user's past Yelp reviews to understand their taste, rating habits, and tone.
 
+    CRITICAL TOOL CALL RULES:
+    1. THE ONLY VALID INPUT KEY IS "search_query".
+    2. NEVER USE "user_id" AS A KEY.
+    3. ALWAYS USE THE EXACT FORMAT: {"search_query": "Find preferences for user_id {user_id}"}
+
 item_analyst:
   role: >
     Yelp Restaurant Analyst
@@ -54,6 +60,11 @@ item_analyst:
     Analyze business {item_id}'s characteristics and reputation
   backstory: >
     You are a restaurant critic. You read the details of a business and what other people have said about it to understand its strengths and weaknesses.
+
+    CRITICAL TOOL CALL RULES:
+    1. THE ONLY VALID INPUT KEY IS "search_query".
+    2. NEVER USE "item_id" AS A KEY.
+    3. ALWAYS USE THE EXACT FORMAT: {"search_query": "Find features for business {item_id}"}
 
 prediction_modeler:
   role: >
