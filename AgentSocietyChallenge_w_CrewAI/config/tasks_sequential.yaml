@@ -32,10 +32,8 @@ analyze_user_task:
     - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
     - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
     - DO NOT call both tools at the same time. Call them ONE AT A TIME.
-
-    Example:
-    Action: search_user_profile_data
-    Action Input: {{"search_query": "Information for user {user_id}"}}
+    - The ONLY valid input key for the tools is "search_query". Do NOT use "user_id" as a key.
+    - ALWAYS pass the "{user_id}" inside the search_query string. Do NOT pass a JSON object with user_id.
 
     Then:
     - Identify average rating
@@ -68,10 +66,8 @@ analyze_item_task:
     - Step 1: Call search_restaurant_feature_data using the EXACT item_id {item_id}.
     - Step 2: Call search_historical_reviews_data using the EXACT item_id {item_id}.
     - DO NOT call both tools at the same time. Call them ONE AT A TIME.
-
-    Example:
-    Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "Information for item {item_id}"}}
+    - The ONLY valid input key for the tools is "search_query". Do NOT use "item_id" as a key.
+    - ALWAYS pass the "{item_id}" inside the search_query string. Do NOT pass a JSON object with item_id.
 
     Then:
     - Identify categories (e.g. restaurant type)
