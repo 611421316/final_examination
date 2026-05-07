@@ -25,6 +25,15 @@ else:
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from crewai_tools import JSONSearchTool, SerperDevTool
+
+serper_tool = SerperDevTool(
+    name="search_internet",
+    description=(
+        "Search the internet for general restaurant review trends, Yelp rating behavior, "
+        "customer satisfaction factors, and public background information."
+    )
+)
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -184,6 +193,15 @@ class HierarchicalCrew():
             llm=default_llm,
         )
 
+    @agent
+    def internet_researcher(self) -> Agent:
+        return Agent(
+            config=self.agents_config['internet_researcher'],
+            verbose=True,
+            llm=default_llm,
+        )
+        
+
     @task
     def analyze_user_task(self) -> Task:
         return Task(
@@ -203,11 +221,16 @@ class HierarchicalCrew():
             output_file='report.json'
         )
 
+    @task
+    def internet_research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['internet_research_task'],
+        )
+
     @agent
     def project_manager(self) -> Agent:
         return Agent(
             config=self.agents_config["project_manager"],
-            tools=[],
             verbose=True,
             allow_delegation=True,
             llm=default_llm
@@ -217,11 +240,13 @@ class HierarchicalCrew():
     def crew(self) -> Crew:
         return Crew(
             agents=[
+                self.internet_researcher(),
                 self.user_analyst(),
                 self.item_analyst(),
                 self.prediction_modeler(),
             ],
             tasks=[
+                self.internet_research_task(),
                 self.analyze_user_task(),
                 self.analyze_item_task(),
                 self.predict_review_task(),

@@ -1,68 +1,80 @@
-# === Step 5: Strictly Separated Task Definitions ===
+# === Collaborative-style Sequential Task Definitions ===
+
+internet_research_task:
+  description: >
+    Provide general insights about restaurant reviews and rating behavior using internet search if available.
+
+    Focus on:
+    - Why users give 1–2 stars
+    - Why users give 3 stars
+    - Why users give 4–5 stars
+    - Common rating factors: food, service, price, waiting time, atmosphere
+
+    STRICT RULES:
+    - Do NOT fabricate information about user {user_id} or business {item_id}
+    - Only provide general restaurant rating patterns
+    - Keep the output concise
+    - Maximum 5 bullet points
+
+  expected_output: >
+    Concise bullet points about general restaurant rating behavior.
+
+  agent: internet_researcher
+
+
 analyze_user_task:
   description: >
-    Analyze user {user_id} using available tools.
+    Analyze user {user_id} using available RAG tools.
 
     REQUIRED ACTIONS:
     - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
     - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
-    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
+    - Call tools ONE AT A TIME.
+    - ALWAYS include the EXACT string "{user_id}" in the search_query.
 
     Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "Information for user {user_id}"}}
+    Action Input: {"search_query": "Information for user {user_id}"}
 
-    Then:
-    - Identify average rating
-    - Identify sentiment tendency (positive/neutral/negative)
-    - Identify common keywords or preferences (e.g. food quality, service, price)
+    Then analyze:
+    - Average rating behavior
+    - Sentiment tendency
+    - Common preferences
+    - Notable behavior patterns
+    - Whether this user is strict, neutral, or generous
 
     STRICT RULES:
     - MUST use tool outputs
-    - ALWAYS include the EXACT string "{user_id}" in your search_query.
-    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+    - Do NOT invent user facts
+    - Action Input must be ONE dictionary only
+    - Do NOT return a list of JSON objects in Action Input
 
   expected_output: >
-    A structured markdown report including:
+    A structured markdown user profile report including:
     - Average rating
     - Sentiment tendency
     - Key preferences
     - Notable behavior patterns
+    - Rating style
 
   agent: user_analyst
 
 
-internet_research_task:
-  description: >
-    Provide general insights about restaurant reviews and rating behavior.
-
-    Focus on:
-    - What makes users give 1–2 stars
-    - What makes users give 3 stars
-    - What makes users give 4–5 stars
-    - Common factors: food, service, price, waiting time, atmosphere
-
-    IMPORTANT:
-    - Do NOT fabricate data about the specific user or item
-    - Provide only general patterns
-    - Keep it concise (max 5 bullet points)
-
-  expected_output: >
-    Concise bullet points describing rating behavior patterns (1–2, 3, 4–5 stars).
-
-  agent: internet_researcher
-
 analyze_item_task:
   description: >
-    Use the search_restaurant_feature_data tool to find information about business {item_id}.
+    Analyze business {item_id} using available RAG tools.
 
-    You MUST call the tool with a natural language search_query string, for example:
+    REQUIRED ACTIONS:
+    - Step 1: Call search_restaurant_feature_data using the EXACT item_id {item_id}.
+    - Step 2: Call search_historical_reviews_data using the EXACT item_id {item_id}.
+    - Call tools ONE AT A TIME.
+    - ALWAYS include the EXACT string "{item_id}" in the search_query.
+
+    Example:
     Action: search_restaurant_feature_data
-    Action Input: {"search_query": "What are the categories and star rating for business {item_id}"}
+    Action Input: {"search_query": "Information, categories, attributes, and star rating for business {item_id}"}
 
-    Also use search_historical_reviews_data to find past reviews about this business.
-
-    Analyze:
+    Then analyze:
     - Restaurant categories
     - Star rating
     - Attributes
@@ -70,28 +82,69 @@ analyze_item_task:
     - Common negative feedback
     - Overall public sentiment
 
+    STRICT RULES:
+    - MUST use tool outputs
+    - Do NOT invent business facts
+    - Action Input must be ONE dictionary only
+
   expected_output: >
-    A detailed markdown report of business {item_id}'s features, pros, and cons.
+    A structured markdown business report including:
+    - Categories
+    - Star rating
+    - Attributes
+    - Positive feedback
+    - Negative feedback
+    - Overall sentiment
+
   agent: item_analyst
+
+
+collaborative_reasoning_task:
+  description: >
+    Combine the User Profile, Item Report, and External Research.
+
+    Your job is to reason about whether business {item_id} matches user {user_id}'s preferences.
+
+    Analyze:
+    - Match between user preferences and restaurant features
+    - Possible reasons the user may like the restaurant
+    - Possible reasons the user may dislike the restaurant
+    - Expected rating direction: low, medium, or high
+    - Important evidence from previous task outputs
+
+    STRICT RULES:
+    - Do NOT call tools
+    - Do NOT invent new facts
+    - Use only previous task outputs
+    - Be grounded in retrieved data
+
+  expected_output: >
+    A concise collaborative reasoning report explaining the likely user-business match.
+
+  agent: prediction_modeler
 
 
 predict_review_task:
   description: >
-    Using the User Profile, Item Report, and External Research from the previous tasks,
+    Using the User Profile, Item Report, External Research, and Collaborative Reasoning,
     predict the Stars from 1 to 5 and write the Review Text.
 
-    You MUST base your prediction on the actual data retrieved by the previous agents.
-    Do NOT say the data was not found.
-
     Consider:
-    - Whether the restaurant matches the user's historical preferences
-    - The user's average rating behavior
-    - The business's strengths and weaknesses
+    - User's historical rating behavior
+    - User's sentiment tendency
+    - Restaurant strengths and weaknesses
     - General restaurant rating patterns
+    - Match between user preferences and business features
+
+    STRICT RULES:
+    - Do NOT say the data was not found
+    - Do NOT invent unsupported facts
+    - Output must be valid JSON
+    - Use exactly two keys: "stars" and "review"
 
   expected_output: >
-    A draft JSON object with exactly two keys:
     {"stars": 4, "review": "The review text..."}
+
   agent: prediction_modeler
 
 
@@ -100,23 +153,24 @@ review_prediction_task:
     Review the draft prediction from the Prediction Modeler.
 
     Check:
-    - Whether the predicted stars are consistent with the user's rating habits
-    - Whether the review text matches the business features
+    - Whether predicted stars are consistent with the user's rating habits
+    - Whether the review text matches business features
     - Whether the prediction is grounded in retrieved data
     - Whether the JSON format is valid
     - Whether the review sounds natural and realistic
 
-    IMPORTANT:
-    - Do NOT invent new user or business facts
+    STRICT RULES:
     - Do NOT call tools
-    - Only review and suggest corrections if needed
+    - Do NOT invent new user or business facts
+    - Only review the prediction and suggest corrections if needed
 
   expected_output: >
-    A concise review report with:
+    A concise review report including:
     - Validity check
     - Problems found, if any
     - Suggested final stars
     - Suggested final review text
+
   agent: reviewer
 
 
@@ -126,13 +180,14 @@ final_prediction_task:
     - User Profile
     - Item Report
     - External Research
+    - Collaborative Reasoning
     - Draft Prediction
     - Reviewer Feedback
 
-    IMPORTANT:
+    STRICT RULES:
     - Output ONLY a valid JSON object
     - Use exactly two keys: "stars" and "review"
-    - "stars" must be a integer from 1 to 5
+    - "stars" must be an integer from 1 to 5
     - "review" must be a string
     - Do NOT include markdown
     - Do NOT include explanations
@@ -141,4 +196,5 @@ final_prediction_task:
 
   expected_output: >
     {"stars": 4, "review": "The review text..."}
+
   agent: prediction_modeler

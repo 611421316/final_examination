@@ -8,7 +8,15 @@ CHROMA_DIR = _PROJECT_ROOT / "data" / "my_chroma"
 os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
 os.makedirs(CHROMA_DIR, exist_ok=True)
 from crewai import Agent, Crew, Process, Task, LLM
-from crewai_tools import JSONSearchTool
+from crewai_tools import JSONSearchTool, SerperDevTool
+
+serper_tool = SerperDevTool(
+    name="search_internet",
+    description=(
+        "Search the internet for general restaurant review trends, Yelp rating behavior, "
+        "customer satisfaction factors, and public background information."
+    )
+)
 # === LLM Provider Selection ===
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
 print("Here is provider: ", llm_provider)
@@ -167,6 +175,7 @@ class SequentialCrew():
     def internet_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config['internet_researcher'],
+            tools=[serper_tool],
             verbose=True,
             llm=default_llm,
         )
