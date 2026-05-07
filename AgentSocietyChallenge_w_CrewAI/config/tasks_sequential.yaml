@@ -2,21 +2,27 @@
 
 internet_research_task:
   description: >
-    Provide general insights about restaurant reviews and rating behavior.
+    Provide general insights about restaurant reviews and rating behavior using internet search if available.
 
     Focus on:
-    - What makes users give 1–2 stars
-    - What makes users give 3 stars
-    - What makes users give 4–5 stars
-    - Common factors: food, service, price, waiting time, atmosphere
+    - Why users give 1–2 stars
+    - Why users give 3 stars
+    - Why users give 4–5 stars
+    - Common rating factors: food, service, price, waiting time, atmosphere
 
-    IMPORTANT:
-    - Do NOT fabricate data about the specific user or item
-    - Provide only general patterns
-    - Keep it concise (max 5 bullet points)
+    REQUIRED ACTIONS:
+    - Call search_internet using a natural language query.
+    - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
+
+    STRICT RULES:
+    - Do NOT fabricate information about user {user_id} or business {item_id}
+    - Only provide general restaurant rating patterns
+    - Keep the output concise
+    - Maximum 5 bullet points
+    - NEVER pass a dictionary with a "description" key to the tool. Use "search_query".
 
   expected_output: >
-    Concise bullet points describing rating behavior patterns (1–2, 3, 4–5 stars).
+    Concise bullet points about general restaurant rating behavior.
 
   agent: internet_researcher
 
@@ -28,14 +34,15 @@ analyze_user_task:
   description: >
     Analyze user {user_id} using available tools.
 
-    REQUIRED ACTIONS:
-    - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
-    - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
-    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
-
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "user_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    
     Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "Information for user {user_id}"}}
+    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
 
     Then:
     - Identify average rating
@@ -64,14 +71,15 @@ analyze_item_task:
   description: >
     Analyze business {item_id} using available tools.
 
-    REQUIRED ACTIONS:
-    - Step 1: Call search_restaurant_feature_data using the EXACT item_id {item_id}.
-    - Step 2: Call search_historical_reviews_data using the EXACT item_id {item_id}.
-    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
-
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "item_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    
     Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "Information for item {item_id}"}}
+    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
 
     Then:
     - Identify categories (e.g. restaurant type)
@@ -118,10 +126,10 @@ predict_review_task:
 
   expected_output: >
     Output ONLY a valid JSON object:
-    {"stars": <Integer between 1 and 5>, "review": "<natural review text>"}
+    {"stars": <float between 1.0 and 5.0>, "review": "<natural review text>"}
 
     RULES:
-    - stars must be an integer between 1 and 5
+    - stars must be an float between 1.0 and 5.0
     - review must be realistic and consistent with stars
     - NO explanation
     - NO markdown

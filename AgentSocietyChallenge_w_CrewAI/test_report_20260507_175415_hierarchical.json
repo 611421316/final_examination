@@ -1,0 +1,427 @@
+{
+  "run_timestamp": "20260507_175415",
+  "team_members": [
+    {
+      "name": "Vinh",
+      "student_id": "611421316"
+    },
+    {
+      "name": "ERIC",
+      "student_id": "611321215"
+    }
+  ],
+  "mode": "real_llm",
+  "config": {
+    "threads": 1,
+    "timeout_seconds": 1200,
+    "tasks_run": 35
+  },
+  "timing": {
+    "init_seconds": 5.27,
+    "inference_seconds": 7801.14,
+    "avg_task_seconds": 222.89,
+    "min_task_seconds": 86.79,
+    "max_task_seconds": 577.48
+  },
+  "errors": 0,
+  "evaluation": {
+    "type": "simulation",
+    "metrics": {
+      "preference_estimation": 0.74,
+      "review_generation": 0.7314119383452973,
+      "overall_quality": 0.7357059691726486
+    },
+    "data_info": {
+      "evaluated_count": 35,
+      "original_simulation_count": 35,
+      "original_ground_truth_count": 35
+    }
+  },
+  "per_task_outputs": [
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_RD91KuqIeEkUQkVNR_j0Q",
+        "item_id": "9c7MUiE6VI8NesjPdj5FkA"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "Wow, just wow! Bistro Bliss is truly a gem in the city. The atmosphere is cozy and inviting, and the service is top-notch. But what really stands out is the food - oh my goodness, the pasta dishes are to die for! I had the spaghetti carbonara, and it was cooked to perfection. The flavors were rich and creamy, and the portion size was generous. I also loved the fact that they have a great selection of Italian wines to pair with your meal. Overall, I would highly recommend Bistro Bliss to anyone looking for a delicious and memorable dining experience. 5 stars isn't enough - I'd give it 10 if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "8zsD9N1ti4Skl_DVS4MKRA",
+        "item_id": "LINqYppbDjHbPrjpfHqCaQ"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The review text..."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "YxyJGC5Q9zt2Ada1wavkRg",
+        "item_id": "C809UuprygJyEgJw4wr2Pg"
+      },
+      "output": {
+        "stars": 3.5,
+        "review": "The food was excellent, but the service was a bit slow and the atmosphere was not very welcoming. However, the staff was friendly and the prices were reasonable. Overall, it was a decent experience, but not exceptional. I would recommend it to others, but with some caveats."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "qeU_taXeFL_NyBk379sAVw",
+        "item_id": "siPJQeI7zK2EwvwzN8KpUg"
+      },
+      "output": {
+        "stars": 4.8,
+        "review": "I recently visited The Italian Kitchen with my friends and had an amazing experience! The food was delicious, the service was friendly, and the atmosphere was cozy. We ordered the pasta, pizza, and salads, and everything was cooked to perfection. The prices were reasonable, and the portions were generous. I would definitely recommend this place to anyone looking for a great Italian meal."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_O07bgm0k4AvHlqf9jDWYw",
+        "item_id": "jEasa4Sbzy4NdLyzPPgQyg"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "I recently visited [business name] and had an amazing experience! The service was top-notch, the food was delicious, and the atmosphere was welcoming and cozy. The location was also very convenient, and the prices were reasonable. I would highly recommend [business name] to anyone looking for a great dining experience. The staff was friendly and attentive, and the menu had a great selection of options. Overall, I was thoroughly impressed with [business name] and can't wait to go back!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_YtjV3BMM1it9tRDCZKK1Q",
+        "item_id": "4MY3w1Spq0LFxLKmIkGRWg"
+      },
+      "output": {
+        "stars": 4.2,
+        "review": "I recently visited this restaurant with a group of friends and had a great experience. The food was delicious, the service was friendly and attentive, and the atmosphere was lively and fun. The only downside was the long wait time, but it was worth it in the end. Overall, I would highly recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "PlkcpVx74F5bcjTznVoTEg",
+        "item_id": "ITOkOiX-hfsazVPpFFQVJA"
+      },
+      "output": {
+        "stars": 4.7,
+        "review": "I recently visited The Best Restaurant and had an incredible experience! The service was top-notch, the food was delicious, and the atmosphere was cozy and inviting. I ordered the pasta dish, which was cooked to perfection and served with a side of garlic bread that was crispy on the outside and soft on the inside. The prices were very reasonable, and the portions were generous. I would highly recommend this restaurant to anyone looking for a great Italian meal. 5 stars isn't enough - I'd give it 10 stars if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "1kdXLwdjvuk7FIS3c-oOPA",
+        "item_id": "ReVpjIDupK_VMPn7ZxPvOQ"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "I recently visited 'The Best Italian Restaurant' with my family and we had an amazing experience! The service was top-notch, the food was delicious, and the atmosphere was cozy and intimate. We ordered the pasta dish, pizza, and salad, and everything was perfectly cooked and presented. The prices were reasonable, and the portions were generous. I would highly recommend this restaurant to anyone looking for a great Italian meal. 5/5 stars!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4I0CNcNYC64DzlP97I6stA",
+        "item_id": "EI2_OgANt1Mb_83cNnpPwg"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I've been to The Best Restaurant several times, and each time I've had an amazing experience! The food is always delicious, the service is top-notch, and the atmosphere is cozy and inviting. I've tried many different dishes, and every single one has been a hit. The pasta is cooked to perfection, the pizza is crispy and flavorful, and the salads are fresh and creative. The staff is friendly and attentive, and the prices are very reasonable. I highly recommend this restaurant to anyone looking for a great dining experience. 5 stars isn't enough - I'd give it 10 stars if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "P8cwH7A59NgHKFrNjoiojQ",
+        "item_id": "1Ggw9DE7s9h4q9sRo-f3oA"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I'm so impressed with this restaurant! The service was top-notch, the food was delicious, and the atmosphere was cozy and inviting. I've been to a lot of restaurants in this city, but this one stands out from the rest. The staff were friendly and attentive, and the menu had a great selection of options. I highly recommend this place to anyone looking for a great dining experience. 5 stars isn't enough - I'd give it 10 if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "3GunTcTClJvVTj0Rragv_g",
+        "item_id": "9NV4U93U4nVnJje1DZrxPA"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I visited this business with mixed expectations. The service was friendly, but the food took a while to arrive. The quality was decent, but not exceptional. Overall, it was an average experience. I might return, but I'm not sure if it's worth the hype."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "fGjhnuxU2o3ylyqTD3TVJQ",
+        "item_id": "X5fWO9e82EICHXzzs6eQMg"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "I recently visited The Cozy Bistro with my friends, and we had an amazing experience! The service was top-notch, and the food was delicious. Our server was friendly and attentive, and the atmosphere was cozy and inviting. We ordered a variety of dishes, and everything was cooked to perfection. I would highly recommend this place to anyone looking for a great dining experience. 5/5 stars!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "OmXFBEYuLpHMClXphGt8kA",
+        "item_id": "uVJkqQ1U9MH7hBorrwGhBg"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I've been to this restaurant several times and it's always been a great experience. The food is delicious, the service is friendly, and the atmosphere is cozy. My favorite dish is the pasta with pesto sauce - it's always cooked to perfection. The prices are reasonable too, especially considering the quality of the food. My only complaint is that the restaurant can get quite busy on weekends, but it's worth the wait. Overall, I highly recommend this place to anyone looking for a great Italian meal."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "ykDbok7TYzgOp3Fx8Y934A",
+        "item_id": "z_7TZeTXsDH6MmkPHQN8nQ"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The food was delicious and the service was friendly. However, the prices were a bit high. Overall, it was a great experience and I would definitely recommend it to others."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "UqbnGiOpb4Jh1KVfhU7_NA",
+        "item_id": "Fu6fvUUeBsQtQLsXbynoBQ"
+      },
+      "output": {
+        "stars": 4.8,
+        "review": "Great Italian food and service! The pasta dishes were delicious and the staff was friendly. Highly recommend this place for a nice dinner. 5/5 stars!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "UDQI6MyqcoC5MLF7tS6aow",
+        "item_id": "410SzJMr27T3wUusKW890A"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I'm so glad I stumbled upon this hidden gem! The food was absolutely delicious, and the service was top-notch. The staff were friendly and attentive, and the atmosphere was cozy and inviting. I had the pasta dish, and it was cooked to perfection. The portion size was generous, and the prices were very reasonable. I would highly recommend this place to anyone looking for a great dining experience. My only reason for not giving it 5 stars is that the restaurant was a bit difficult to find, but that's a minor complaint. Overall, I'm so impressed with this place, and I'll definitely be back!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4WHitFIWTTmj8gE--7GyoA",
+        "item_id": "arKiXax3ScSM_z3O-0CIyw"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "Decent experience, friendly service, but food was just okay, prices were reasonable, average experience, wouldn't go out of my way to recommend it."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "uB0hadiRiQcyRF7rt4PL-w",
+        "item_id": "qDEcJ48kXdWxQGZefgG94w"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "Wow, what a fantastic experience at [Business Name]! The food was incredible, the service was top-notch, and the atmosphere was cozy and inviting. I was a bit skeptical about trying an Italian restaurant in [City], but I'm so glad I took the chance. The pasta was cooked to perfection, and the wine list was impressive. I'll definitely be back with my friends and family. 5/5 stars isn't enough - I'd give it 10/10 if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "P-NTOAMFVSDFGkhcj4GaIQ",
+        "item_id": "VO5Jphyqmoa62lbA7-vzpQ"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "Wow, I'm so impressed with this place! The food was amazing, the service was top-notch, and the atmosphere was so welcoming. I've been to a lot of restaurants in the area, but this one stands out from the rest. The prices were very reasonable, and the portions were generous. I've already recommended it to all my friends and family. 5 stars isn't enough - I'd give it 10 stars if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "jGs8-yyoQA5b7Gu3liK9Ow",
+        "item_id": "QQGyPctWtd9WOZnMKUChUQ"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I've been to The Best Restaurant several times and it's always been a great experience. The food is delicious, the service is friendly, and the atmosphere is cozy. I've tried their pasta dishes, pizza, and salads, and everything has been amazing. The prices are reasonable, and the portions are generous. I've recommended this place to all my friends and family, and I'm sure you'll love it too. 5 stars isn't enough - I'd give it 10 stars if I could!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "IML25ULTDCnR_o58BIQWuA",
+        "item_id": "rKx-J2H54p2eZIdn8JvJuA"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The food was delicious, the service was friendly, and the atmosphere was pleasant. I would highly recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "5a-3jw_SxqpVjL2C65lslA",
+        "item_id": "EMXZ_zHfbFQi18J88-i3lw"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "The business is consistently highly rated across all categories, with a strong online presence and positive reviews mentioning good service, delicious food, and friendly staff. However, there are a few negative reviews that mention poor service and high prices. Overall, I would highly recommend this business to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "52R1k6G03m8ES7N1rXiB1Q",
+        "item_id": "0jQPPEppYjGQ2higy6JvCg"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "The food was amazing, the service was great, and the atmosphere was wonderful. I would definitely recommend this place to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "DK57YibC5ShBmqQl97CKog",
+        "item_id": "BUk5vgBJIJKTj_izP731yw"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I had an amazing experience at this restaurant! The service was top-notch, the food was delicious, and the atmosphere was cozy and inviting. The prices were a bit steep, but the quality of the food and service made it well worth it. I would highly recommend this place to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "6-1-PoKy0sPtJmmD9n-PQg",
+        "item_id": "-fjIX9bvBKwXjQWfdgiWpQ"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I recently visited -fjIX9bvBKwXjQWfdgiWpQ and had an amazing experience! The food was delicious, the service was friendly and attentive, and the atmosphere was cozy and inviting. I ordered the signature dish, which was cooked to perfection and presented beautifully. The prices were a bit steep, but the quality of the food and service made it well worth it. I would definitely recommend this place to anyone looking for a great dining experience. 4/5 stars - only deducted a star because the portion sizes were a bit small for the price."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "L0L09rkV4mb1z_B4-BCvog",
+        "item_id": "elbqy5pmTuhPo6-VZR5g8w"
+      },
+      "output": {
+        "stars": 3.5,
+        "review": "Decent experience, but not exactly what I was expecting. The food was okay, but the service was a bit slow. The atmosphere was nice, though. Maybe I just caught them on an off day? Either way, I'd give it another shot, but only if they work on their timing."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "59qPUhPO6l498iCuvRy0Ig",
+        "item_id": "-JIeZE7f926mnRNcdnYk6Q"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I recently visited [Business Name] and was blown away by the friendly service and delicious food. The atmosphere was cozy and inviting, and the prices were very reasonable. I had the [dish name] which was cooked to perfection and tasted amazing. The only reason I didn’t give it a full 5 stars is that the wait time was a bit longer than expected, but overall, it was a great experience and I would highly recommend it to anyone looking for a great meal. 4/5 stars!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "EkNSiRS4uXjY-5BBXLQHfw",
+        "item_id": "eqNutOMnPqKa9QDAY6KfEw"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I recently visited eqNutOMnPqKa9QDAY6KfEw Restaurant with my friends, and we had an amazing time! The atmosphere was cozy and intimate, with dim lighting and comfortable seating. Our server was friendly and attentive, and the food was absolutely delicious. I ordered the pasta dish, which was cooked to perfection and had just the right amount of sauce. My friends and I also tried the pizza, which was crispy and flavorful. Overall, we were all impressed with the quality of the food and the service. We will definitely be back to try more of the menu items!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "5YFsXxEu-A4F93nHag0W3A",
+        "item_id": "9kfDDNapNWKF5B41X27HkA"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I recently visited this charming Italian restaurant in the heart of New York City, and I must say, it exceeded my expectations! The service was top-notch, the pasta dishes were cooked to perfection, and the atmosphere was cozy and intimate. The prices were a bit steep, but the quality of the food and the excellent service made it well worth it. I highly recommend this place to anyone looking for a delicious Italian meal in a beautiful setting. 5 stars, hands down!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "Ls6_meTWoLZasx4174L0Jg",
+        "item_id": "IkidDP7w2iFsS1a2szkgHQ"
+      },
+      "output": {
+        "stars": 2.0,
+        "review": "Disappointing experience at this restaurant. The food was overpriced and not particularly good. The service was also slow and unfriendly. I've had better experiences at other restaurants in the area. Wouldn't recommend this place to anyone."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "Ys3yWYAemsDpXcNTkU6p8g",
+        "item_id": "poviu-6n3iaRE4gdQz6OYw"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I've been to poviu-6n3iaRE4gdQz6OYw several times, and each time I'm impressed by their consistency and quality of food. The service is always friendly and attentive, and the atmosphere is cozy and inviting. My favorite dish is their signature pasta, which is cooked to perfection and bursting with flavor. The prices are a bit steep, but I believe it's worth it for the exceptional experience. Overall, I highly recommend poviu-6n3iaRE4gdQz6OYw to anyone looking for a great meal in a welcoming environment."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4oWWLIkmXjZc9-NNz3UvUQ",
+        "item_id": "M6qDX8HZS7gOJ_pBOAih1g"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I've been to this Italian restaurant multiple times, and it never fails to impress me! The food is delicious, the service is friendly, and the atmosphere is cozy. I've tried their pasta dishes, pizza, and even their coffee, and everything is always top-notch. The only reason I didn't give it 5 stars is that the prices can be a bit steep for some of the dishes. Nevertheless, I highly recommend this place to anyone looking for a great Italian meal in the city."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "1lV0zOCOVCVMaiCmdVrLaw",
+        "item_id": "kvzzU6ouwmDEUBs87VAELg"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The review text..."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "WfkfXq17v7Zvxo76Tv2ojg",
+        "item_id": "z9ipWqd6asWSn1vwcBvUcg"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The review text..."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "emWdy8DFSjuKam7ygHsPng",
+        "item_id": "LYPvkW2MvEbg-JIr91r1VA"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The review text..."
+      }
+    }
+  ]
+}

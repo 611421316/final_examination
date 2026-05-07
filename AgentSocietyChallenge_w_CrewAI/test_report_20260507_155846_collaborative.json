@@ -1,0 +1,427 @@
+{
+  "run_timestamp": "20260507_155846",
+  "team_members": [
+    {
+      "name": "Vinh",
+      "student_id": "611421316"
+    },
+    {
+      "name": "ERIC",
+      "student_id": "611321215"
+    }
+  ],
+  "mode": "real_llm",
+  "config": {
+    "threads": 1,
+    "timeout_seconds": 1200,
+    "tasks_run": 35
+  },
+  "timing": {
+    "init_seconds": 5.43,
+    "inference_seconds": 6386.34,
+    "avg_task_seconds": 182.47,
+    "min_task_seconds": 8.57,
+    "max_task_seconds": 901.26
+  },
+  "errors": 0,
+  "evaluation": {
+    "type": "simulation",
+    "metrics": {
+      "preference_estimation": 0.7617142857142857,
+      "review_generation": 0.6992272601329116,
+      "overall_quality": 0.7304707729235986
+    },
+    "data_info": {
+      "evaluated_count": 35,
+      "original_simulation_count": 35,
+      "original_ground_truth_count": 35
+    }
+  },
+  "per_task_outputs": [
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_RD91KuqIeEkUQkVNR_j0Q",
+        "item_id": "9c7MUiE6VI8NesjPdj5FkA"
+      },
+      "output": {
+        "stars": 2.0,
+        "review": "I was disappointed with the service and food quality at this restaurant. The long waiting time and poor service made it a frustrating experience. However, the atmosphere was pleasant, and the price was reasonable."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "8zsD9N1ti4Skl_DVS4MKRA",
+        "item_id": "LINqYppbDjHbPrjpfHqCaQ"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I had a mixed experience at this restaurant. The food was decent, but the service was a bit slow. The prices were reasonable, but the waiting time was a bit excessive. Overall, I would give it 3 stars. It's an okay place to grab a bite, but it's not exceptional."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "YxyJGC5Q9zt2Ada1wavkRg",
+        "item_id": "C809UuprygJyEgJw4wr2Pg"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I had a great experience at this restaurant! The food was delicious and the service was friendly. I would definitely recommend it to my friends."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "qeU_taXeFL_NyBk379sAVw",
+        "item_id": "siPJQeI7zK2EwvwzN8KpUg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I was pleasantly surprised by the delicious food at siPJQeI7zK2EwvwzN8KpUg. The atmosphere was cozy and inviting, making it a great spot for a casual dinner. However, there were a few minor issues with the service, which prevented me from giving a higher rating."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_O07bgm0k4AvHlqf9jDWYw",
+        "item_id": "jEasa4Sbzy4NdLyzPPgQyg"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "The pizza was delicious and the service was friendly. The atmosphere was cozy and kid-friendly, which was a bonus. I would highly recommend this restaurant to anyone looking for a great Italian meal."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "_YtjV3BMM1it9tRDCZKK1Q",
+        "item_id": "4MY3w1Spq0LFxLKmIkGRWg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I had a mixed experience at this restaurant. The atmosphere was decent, but the service was a bit slow. The food was okay, but not impressive. Overall, it was an average experience, and I would recommend it to others with some reservations."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "PlkcpVx74F5bcjTznVoTEg",
+        "item_id": "ITOkOiX-hfsazVPpFFQVJA"
+      },
+      "output": {
+        "stars": 5.0,
+        "review": "I recently visited this restaurant and was blown away by the excellent service and high-quality food. The location is also very convenient, making it a great spot for a quick meal. The restaurant's strong online presence and high ratings on other platforms also suggest that it is a reliable and trustworthy business. Overall, I would highly recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "1kdXLwdjvuk7FIS3c-oOPA",
+        "item_id": "ReVpjIDupK_VMPn7ZxPvOQ"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "I recently visited [Business Name] and was impressed by the excellent service and high-quality food. The atmosphere was pleasant, and the staff were friendly and attentive. This restaurant exceeded my expectations in many ways, and I would definitely recommend it to others who appreciate good food and service."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4I0CNcNYC64DzlP97I6stA",
+        "item_id": "EI2_OgANt1Mb_83cNnpPwg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I had a decent experience at this business. The service was okay, and the food was average. I would recommend it to others, but I wouldn't go out of my way to visit it again."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "P8cwH7A59NgHKFrNjoiojQ",
+        "item_id": "1Ggw9DE7s9h4q9sRo-f3oA"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "The food was great, but the waiting time was a bit long. The atmosphere was wonderful, but the price was a bit higher than expected. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "3GunTcTClJvVTj0Rragv_g",
+        "item_id": "9NV4U93U4nVnJje1DZrxPA"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "The food was okay, the service was friendly, but the prices were a bit high. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "fGjhnuxU2o3ylyqTD3TVJQ",
+        "item_id": "X5fWO9e82EICHXzzs6eQMg"
+      },
+      "output": {
+        "stars": 4.2,
+        "review": "The food was delicious, and the service was friendly. The atmosphere was cozy and inviting. I would definitely recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "OmXFBEYuLpHMClXphGt8kA",
+        "item_id": "uVJkqQ1U9MH7hBorrwGhBg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "The restaurant had a decent atmosphere, but the service was average, and the food was just okay. The prices were reasonable, but I didn't feel like it was worth the money. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "ykDbok7TYzgOp3Fx8Y934A",
+        "item_id": "z_7TZeTXsDH6MmkPHQN8nQ"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "Great food and service! The pizza was delicious and the staff was friendly. However, the waiting time was a bit long, but the food was worth the wait. Overall, I would highly recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "UqbnGiOpb4Jh1KVfhU7_NA",
+        "item_id": "Fu6fvUUeBsQtQLsXbynoBQ"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I recently visited Fu6fvUUeBsQtQLsXbynoBQ and had a decent experience. The food was okay, and the service was friendly. The atmosphere was pleasant, but the prices were a bit high. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "UDQI6MyqcoC5MLF7tS6aow",
+        "item_id": "410SzJMr27T3wUusKW890A"
+      },
+      "output": {
+        "stars": 2.0,
+        "review": "The service was slow and unfriendly. The food was overpriced and not great. I wouldn't recommend this place to anyone. The atmosphere was also not pleasant. Overall, it was a disappointing experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4WHitFIWTTmj8gE--7GyoA",
+        "item_id": "arKiXax3ScSM_z3O-0CIyw"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The food was great, and the service was friendly. The atmosphere was not particularly impressive, but the prices were reasonable. Overall, I would give it 4 stars out of 5."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "uB0hadiRiQcyRF7rt4PL-w",
+        "item_id": "qDEcJ48kXdWxQGZefgG94w"
+      },
+      "output": {
+        "stars": 3.5,
+        "review": "I enjoyed my visit to this Italian restaurant. The service was friendly and attentive, and the food was delicious. However, I found the prices to be a bit steep for the quality of food and service. Overall, it was a pleasant experience, but I wouldn't give it a perfect score."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "P-NTOAMFVSDFGkhcj4GaIQ",
+        "item_id": "VO5Jphyqmoa62lbA7-vzpQ"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "{\n  \"stars\": 3.0,\n  \"review\": \"I was excited to try this new restaurant, but unfortunately, it didn't quite live up to my expectations. The food was decent, but not outstanding, and the service was friendly but a bit slow. I appreciate the restaurant's efforts to create a unique dining experience, but I think they need to work on refining their concept and improving the quality of their dishes. With a bit more attention to detail, I think this restaurant could be a real gem. For now, I'll give it 3 stars and hope that they'll take my feedback to heart.\""
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "jGs8-yyoQA5b7Gu3liK9Ow",
+        "item_id": "QQGyPctWtd9WOZnMKUChUQ"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I was pleasantly surprised by the high-quality food and friendly service at this restaurant. The atmosphere was cozy and inviting, and the prices were reasonable. While there were a few minor issues with the order, the staff was apologetic and made sure everything was taken care of. Overall, I would highly recommend this restaurant to anyone looking for a great dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "IML25ULTDCnR_o58BIQWuA",
+        "item_id": "rKx-J2H54p2eZIdn8JvJuA"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "litellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - {'status': 429, 'title': 'Too Many Requests'}"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "5a-3jw_SxqpVjL2C65lslA",
+        "item_id": "EMXZ_zHfbFQi18J88-i3lw"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I visited this restaurant and had a mixed experience. The food was okay, but the service was not very friendly. The atmosphere was not particularly impressive either. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "52R1k6G03m8ES7N1rXiB1Q",
+        "item_id": "0jQPPEppYjGQ2higy6JvCg"
+      },
+      "output": {
+        "stars": 4.5,
+        "review": "The food was delicious, and the service was friendly. The atmosphere was great, and the prices were reasonable. While there were no major complaints, I would have liked to see more attention to detail in the service. Overall, it was a great dining experience, and I would recommend it to others."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "DK57YibC5ShBmqQl97CKog",
+        "item_id": "BUk5vgBJIJKTj_izP731yw"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "The food quality was excellent, and the service was friendly and attentive. The prices were reasonable, and the atmosphere was pleasant. I would definitely recommend this restaurant to anyone looking for a great dining experience. The only thing that kept it from being a 5-star review was the slightly long wait time, but it was worth it in the end."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "6-1-PoKy0sPtJmmD9n-PQg",
+        "item_id": "-fjIX9bvBKwXjQWfdgiWpQ"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I had an average experience at this restaurant. The service was okay, and the atmosphere was decent. However, the food was a bit overpriced, and the waiting time was a bit too long. Overall, it was an average experience, and I would rate it 3 out of 5 stars."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "L0L09rkV4mb1z_B4-BCvog",
+        "item_id": "elbqy5pmTuhPo6-VZR5g8w"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I'm not sure what to make of this place. The concept is interesting, but the atmosphere is a bit off-putting. The service was friendly, but the food was just okay. Overall, I'd say it's a decent spot, but not worth going out of your way for."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "59qPUhPO6l498iCuvRy0Ig",
+        "item_id": "-JIeZE7f926mnRNcdnYk6Q"
+      },
+      "output": {
+        "stars": 3.5,
+        "review": "I recently visited -JIeZE7f926mnRNcdnYk6Q and had a generally positive experience. The food was good, and the service was friendly. However, the business could improve on its atmosphere and overall value. I would recommend this business to anyone looking for a decent dining experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "EkNSiRS4uXjY-5BBXLQHfw",
+        "item_id": "eqNutOMnPqKa9QDAY6KfEw"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "litellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - {'status': 429, 'title': 'Too Many Requests'}"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "5YFsXxEu-A4F93nHag0W3A",
+        "item_id": "9kfDDNapNWKF5B41X27HkA"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I recently visited this business and had a mixed experience. The atmosphere was pleasant, but the service was slow. The food was decent, but not exceptional. Overall, I would give it 3 out of 5 stars. Maybe next time, I'll have a better experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "Ls6_meTWoLZasx4174L0Jg",
+        "item_id": "IkidDP7w2iFsS1a2szkgHQ"
+      },
+      "output": {
+        "stars": 2.0,
+        "review": "I was disappointed with this business. The service was slow, and the food was not great. I would not recommend this place to anyone."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "Ys3yWYAemsDpXcNTkU6p8g",
+        "item_id": "poviu-6n3iaRE4gdQz6OYw"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "The food was okay, but the service was a bit slow. Overall, it was an average experience."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "4oWWLIkmXjZc9-NNz3UvUQ",
+        "item_id": "M6qDX8HZS7gOJ_pBOAih1g"
+      },
+      "output": {
+        "stars": 4.0,
+        "review": "I had a great experience at this restaurant! The service was friendly, the food was delicious, and the atmosphere was cozy. I would definitely recommend it to others!"
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "1lV0zOCOVCVMaiCmdVrLaw",
+        "item_id": "kvzzU6ouwmDEUBs87VAELg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "The food was decent, and the service was okay. It was a mixed experience, but I would give it another try."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "WfkfXq17v7Zvxo76Tv2ojg",
+        "item_id": "z9ipWqd6asWSn1vwcBvUcg"
+      },
+      "output": {
+        "stars": 3.0,
+        "review": "I recently visited z9ipWqd6asWSn1vwcBvUcg and had a generally pleasant experience. The business had a moderate number of reviews, which suggested that it was a well-established establishment. However, I did not find any information about its categories, star rating, attributes, positive feedback, or negative feedback, which was a bit disappointing. Overall, I would give this business 3 out of 5 stars. It was a decent experience, but it did not blow me away."
+      }
+    },
+    {
+      "task": {
+        "description": "This is a simulation task. \n            You are a simulation agent that simulates a user's rating and review with an item. \n            There is a user with id and an item with id. ",
+        "user_id": "emWdy8DFSjuKam7ygHsPng",
+        "item_id": "LYPvkW2MvEbg-JIr91r1VA"
+      },
+      "output": {
+        "stars": 2.0,
+        "review": "I was disappointed with the service and food quality at this restaurant. The atmosphere was not great, and the prices were too high. I would not recommend this place to anyone."
+      }
+    }
+  ]
+}

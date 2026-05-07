@@ -25,6 +25,15 @@ else:
 from crewai import Agent, Crew, Process, Task, LLM
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from crewai_tools import JSONSearchTool, SerperDevTool
+
+serper_tool = SerperDevTool(
+    name="search_internet",
+    description=(
+        "Search the internet for general restaurant review trends, Yelp rating behavior, "
+        "customer satisfaction factors, and public background information."
+    )
+)
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -165,8 +174,7 @@ class HierarchicalCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -176,8 +184,7 @@ class HierarchicalCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -186,8 +193,26 @@ class HierarchicalCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
+        )
+
+    @agent
+    def internet_researcher(self) -> Agent:
+        return Agent(
+            config=self.agents_config['internet_researcher'],
+            verbose=True,
+            llm=default_llm,
+            max_rpm=5
+        )
+
+    @agent
+    def project_manager(self) -> Agent:
+        return Agent(
+            config=self.agents_config["project_manager"],
+            verbose=True,
+            allow_delegation=True,
+            llm=default_llm,
+            max_rpm=5
         )
 
     @task
@@ -209,25 +234,23 @@ class HierarchicalCrew():
             output_file='report.json'
         )
 
-    @agent
-    def project_manager(self) -> Agent:
-        return Agent(
-            config=self.agents_config["project_manager"],
-            tools=[],
-            verbose=True,
-            allow_delegation=True,
-            llm=default_llm
+    @task
+    def internet_research_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['internet_research_task'],
         )
     
     @crew
     def crew(self) -> Crew:
         return Crew(
             agents=[
+                self.internet_researcher(),
                 self.user_analyst(),
                 self.item_analyst(),
                 self.prediction_modeler(),
             ],
             tasks=[
+                self.internet_research_task(),
                 self.analyze_user_task(),
                 self.analyze_item_task(),
                 self.predict_review_task(),

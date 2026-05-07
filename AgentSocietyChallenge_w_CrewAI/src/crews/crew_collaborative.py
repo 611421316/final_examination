@@ -26,6 +26,15 @@ from crewai_tools import JSONSearchTool
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 import os
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from crewai_tools import JSONSearchTool, SerperDevTool
+
+serper_tool = SerperDevTool(
+    name="search_internet",
+    description=(
+        "Search the internet for general restaurant review trends, Yelp rating behavior, "
+        "customer satisfaction factors, and public background information."
+    )
+)
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -38,15 +47,6 @@ NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
 # sentence-transformer embedding calls to Nvidia (which returns 404).
 # The default_llm object already carries the Nvidia base_url for actual LLM calls.
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-
-with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
-    eda_content = f.read()
-
-eda_knowledge = StringKnowledgeSource(
-    content=eda_content,
-    metadata={"source": "EDA for RAG"}
-)
-
 
 # Embedding Model for converting text to numerical representations
 embedding_model = HuggingFaceEmbeddings(
@@ -164,10 +164,10 @@ class CollaborativeCrew():
     def internet_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config['internet_researcher'],
+            tools=[serper_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -177,8 +177,7 @@ class CollaborativeCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -188,8 +187,7 @@ class CollaborativeCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -198,8 +196,7 @@ class CollaborativeCrew():
             config=self.agents_config['reviewer'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -208,8 +205,7 @@ class CollaborativeCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @task
@@ -230,7 +226,12 @@ class CollaborativeCrew():
         return Task(
             config=self.tasks_config['analyze_item_task'], # type: ignore[index]
         )
-
+    
+    @task
+    def collaborative_reasoning_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['collaborative_reasoning_task'],
+        )
 
     @task
     def predict_review_task(self) -> Task:
@@ -251,6 +252,8 @@ class CollaborativeCrew():
             output_file='report.json'
         )
 
+
+
     @crew
     def crew(self) -> Crew:
         return Crew(
@@ -265,12 +268,13 @@ class CollaborativeCrew():
                 self.internet_research_task(),
                 self.analyze_user_task(),
                 self.analyze_item_task(),
+                self.collaborative_reasoning_task(),
                 self.predict_review_task(),
                 self.review_prediction_task(),
                 self.final_prediction_task(),
             ],  
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge, eda_knowledge],
+            knowledge_sources=[schema_knowledge],
             embedder=rag_config["embedding_model"],
             verbose=True
         )

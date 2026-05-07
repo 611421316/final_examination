@@ -8,7 +8,15 @@ CHROMA_DIR = _PROJECT_ROOT / "data" / "my_chroma"
 os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
 os.makedirs(CHROMA_DIR, exist_ok=True)
 from crewai import Agent, Crew, Process, Task, LLM
-from crewai_tools import JSONSearchTool
+from crewai_tools import JSONSearchTool, SerperDevTool
+
+serper_tool = SerperDevTool(
+    name="search_internet",
+    description=(
+        "Search the internet for general restaurant review trends, Yelp rating behavior, "
+        "customer satisfaction factors, and public background information."
+    )
+)
 # === LLM Provider Selection ===
 llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
 print("Here is provider: ", llm_provider)
@@ -41,15 +49,6 @@ NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
 # sentence-transformer embedding calls to Nvidia (which returns 404).
 # The default_llm object already carries the Nvidia base_url for actual LLM calls.
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-
-with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
-    eda_content = f.read()
-
-eda_knowledge = StringKnowledgeSource(
-    content=eda_content,
-    metadata={"source": "EDA for RAG"}
-)
-
 
 # Embedding Model for converting text to numerical representations
 embedding_model = HuggingFaceEmbeddings(
@@ -167,10 +166,10 @@ class SequentialCrew():
     def internet_researcher(self) -> Agent:
         return Agent(
             config=self.agents_config['internet_researcher'],
+            tools=[serper_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -180,8 +179,7 @@ class SequentialCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1,
+            max_rpm=5
         )
 
     @agent
@@ -191,8 +189,7 @@ class SequentialCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @agent
@@ -201,17 +198,14 @@ class SequentialCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_iter=2,
-            max_retry_limit=1
+            max_rpm=5
         )
 
     @task
     def analyze_user_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_user_task'], # type: ignore[index]
-            tools=[user_rag_tool, review_rag_tool],
-            max_iter=2,
-            max_retry_limit=1
+            tools=[user_rag_tool, review_rag_tool]
         )
 
     @task
@@ -219,25 +213,19 @@ class SequentialCrew():
         return Task(
             config=self.tasks_config['internet_research_task'],
             agent=self.internet_researcher(),
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
     def analyze_item_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_item_task'], 
-            max_iter=2,
-            max_retry_limit=1
         )
 
     @task
     def predict_review_task(self) -> Task:
         return Task(
             config=self.tasks_config['predict_review_task'], # type: ignore[index]
-            output_file='report.json',
-            max_iter=2,
-            max_retry_limit=1
+            output_file='report.json'
         )
 
     @crew
@@ -256,7 +244,7 @@ class SequentialCrew():
                 self.predict_review_task(),
         ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge, eda_knowledge],
+            knowledge_sources=[schema_knowledge],
             embedder=rag_config["embedding_model"],
             verbose=True
         )

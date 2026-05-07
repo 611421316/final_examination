@@ -1,36 +1,101 @@
-# === Step 5: Strictly Separated Task Definitions ===
+internet_research_task:
+  description: >
+    Provide general insights about restaurant reviews and rating behavior using internet search if available.
+
+    Focus on:
+    - Why users give 1–2 stars
+    - Why users give 3 stars
+    - Why users give 4–5 stars
+    - Common rating factors: food, service, price, waiting time, atmosphere
+
+    REQUIRED ACTIONS:
+    - Call search_internet using a natural language query.
+    - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
+
+    STRICT RULES:
+    - Do NOT fabricate information about user {user_id} or business {item_id}
+    - Only provide general restaurant rating patterns
+    - Keep the output concise
+    - Maximum 5 bullet points
+    - NEVER pass a dictionary with a "description" key to the tool. Use "search_query".
+
+  expected_output: >
+    Concise bullet points about general restaurant rating behavior.
+
+  agent: internet_researcher
 
 analyze_user_task:
   description: >
-    Use the search_user_profile_data tool to find information about user {user_id}.
-    You MUST call the tool with a natural language search_query string, for example:
+    Find the exact profile and historical reviews for user_id "{user_id}".
+
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "user_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    
+    Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the review habits and average stars for user {user_id}"}}
-    Also use search_historical_reviews_data to find past reviews written by this user.
-    Understand their average stars, what words they commonly use, and their general sentiment.
+    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
+
+    Analyze:
+    - average stars
+    - review count
+    - rating tendency
+    - common review patterns
+    - sentiment tendency
+
   expected_output: >
     A detailed markdown profile of user {user_id}'s preferences and rating habits.
+    If exact user data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
   agent: user_analyst
+
 
 analyze_item_task:
   description: >
-    Use the search_restaurant_feature_data tool to find information about business {item_id}.
-    You MUST call the tool with a natural language search_query string, for example:
+    Find the exact business profile and historical reviews for item_id "{item_id}".
+
+    CRITICAL TOOL CALL RULES:
+    1. You MUST call tools ONE AT A TIME.
+    2. THE ONLY VALID INPUT KEY IS "search_query".
+    3. NEVER USE "item_id" AS A KEY.
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    
+    Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the categories and star rating for business {item_id}"}}
-    Also use search_historical_reviews_data to find past reviews about this business.
-    Understand its categories, attributes, and overall public sentiment.
+    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
+
+    Then analyze:
+    - categories
+    - stars
+    - review count
+    - strengths
+    - weaknesses
+    - public sentiment
+
   expected_output: >
     A detailed markdown report of business {item_id}'s features, pros, and cons.
+    If exact business data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
   agent: item_analyst
+
 
 predict_review_task:
   description: >
-    Using the User Profile and the Item Report from the previous tasks, predict the Stars (1 to 5) and write the Review Text.
-    You MUST base your prediction on the actual data retrieved by the previous agents. Do NOT say the data was not found.
-    Consider if the restaurant's features align with the user's historical preferences.
+    Using the User Profile and Item Report from the previous tasks, predict the Stars and Review Text.
+
+    RULES:
+    - Base the prediction only on retrieved evidence from previous tasks.
+    - Do NOT claim data was not found unless both previous tasks explicitly failed.
+    - Consider alignment between user rating habits and restaurant quality.
+    - Stars must be an float from 1.0 to 5.0.
+    - Review must sound like a realistic Yelp-style review.
+
   expected_output: >
-    Output ONLY a valid JSON object with exactly two keys: "stars" (an integer from 1 to 5) and "review" (a string).
-    Use single curly braces. Example: {"stars": 4, "review": "The review text..."}
-    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+    Output ONLY one valid JSON object with exactly two keys: stars and review.
+    Example output:
+    {{"stars": 4.0, "review": "The review text..."}}
+
+    Do NOT include markdown.
+    Do NOT include explanations.
+    Do NOT include any text before or after the JSON.
   agent: prediction_modeler

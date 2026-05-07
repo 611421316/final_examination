@@ -7,16 +7,15 @@ if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 from websocietysimulator.agent import SimulationAgent
-from src.flows.serving_flow import AgentSocietyServingFlow, InferenceState
+from src.flows.serving_flow_01 import AgentSocietyServingFlow01, InferenceState
 from src.tools.interaction_tool_wrapper import inject_simulator_tool
 
-class CrewAISimulationAgent(SimulationAgent):
+class CrewAISimulationAgent01(SimulationAgent):
     """
     Adapter connecting AgentSociety's simulator framework to the CrewAI flow.
     """
-    def __init__(self, llm=None, *args, **kwargs):
-        # llm is unused — CrewAI manages its own LLM via env vars (OPENAI_API_KEY / OPENAI_API_BASE)
-        super().__init__(llm=llm, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def workflow(self):
         # 1. 解析官方 Simulator 給予的任務與上下文
@@ -34,7 +33,7 @@ class CrewAISimulationAgent(SimulationAgent):
         )
         
         # 4. 實例化並觸發 CrewAI 引擎非同步、無縫執行
-        flow = AgentSocietyServingFlow(initial_state=initial_state)
+        flow = AgentSocietyServingFlow01(initial_state=initial_state)
         final_state_dict = flow.kickoff()
         
         # 5. 按照 AgentSociety Track 1 要求，回傳 dictionary
