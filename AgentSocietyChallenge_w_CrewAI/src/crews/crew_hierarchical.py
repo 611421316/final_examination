@@ -174,6 +174,7 @@ class HierarchicalCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -183,6 +184,7 @@ class HierarchicalCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -191,6 +193,7 @@ class HierarchicalCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -199,8 +202,18 @@ class HierarchicalCrew():
             config=self.agents_config['internet_researcher'],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
-        
+
+    @agent
+    def project_manager(self) -> Agent:
+        return Agent(
+            config=self.agents_config["project_manager"],
+            verbose=True,
+            allow_delegation=True,
+            llm=default_llm,
+            max_rpm=5
+        )
 
     @task
     def analyze_user_task(self) -> Task:
@@ -225,15 +238,6 @@ class HierarchicalCrew():
     def internet_research_task(self) -> Task:
         return Task(
             config=self.tasks_config['internet_research_task'],
-        )
-
-    @agent
-    def project_manager(self) -> Agent:
-        return Agent(
-            config=self.agents_config["project_manager"],
-            verbose=True,
-            allow_delegation=True,
-            llm=default_llm
         )
     
     @crew

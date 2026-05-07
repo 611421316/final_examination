@@ -8,14 +8,21 @@ internet_research_task:
     - Why users give 4–5 stars
     - Common rating factors: food, service, price, waiting time, atmosphere
 
+    REQUIRED ACTIONS:
+    - Call search_internet using a natural language query.
+    - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
+
     STRICT RULES:
     - Do NOT fabricate information about user {user_id} or business {item_id}
     - Only provide general restaurant rating patterns
     - Keep the output concise
     - Maximum 5 bullet points
+    - NEVER pass a dictionary with a "description" key to the tool. Use "search_query".
 
   expected_output: >
     Concise bullet points about general restaurant rating behavior.
+
+  agent: internet_researcher
 
 analyze_user_task:
   description: >
@@ -78,13 +85,13 @@ predict_review_task:
     - Base the prediction only on retrieved evidence from previous tasks.
     - Do NOT claim data was not found unless both previous tasks explicitly failed.
     - Consider alignment between user rating habits and restaurant quality.
-    - Stars must be an integer from 1 to 5.
+    - Stars must be an float from 1.0 to 5.0.
     - Review must sound like a realistic Yelp-style review.
 
   expected_output: >
     Output ONLY one valid JSON object with exactly two keys: stars and review.
     Example output:
-    {{"stars": 4, "review": "The review text..."}}
+    {{"stars": 4.0, "review": "The review text..."}}
 
     Do NOT include markdown.
     Do NOT include explanations.

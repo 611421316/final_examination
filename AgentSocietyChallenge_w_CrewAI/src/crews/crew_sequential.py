@@ -169,6 +169,7 @@ class SequentialCrew():
             tools=[serper_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -178,6 +179,7 @@ class SequentialCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -187,6 +189,7 @@ class SequentialCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -195,6 +198,7 @@ class SequentialCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @task

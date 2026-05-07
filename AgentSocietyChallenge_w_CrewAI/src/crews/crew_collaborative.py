@@ -167,6 +167,7 @@ class CollaborativeCrew():
             tools=[serper_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -176,6 +177,7 @@ class CollaborativeCrew():
             tools=[user_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -185,6 +187,7 @@ class CollaborativeCrew():
             tools=[item_rag_tool, review_rag_tool],
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -193,6 +196,7 @@ class CollaborativeCrew():
             config=self.agents_config['reviewer'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @agent
@@ -201,6 +205,7 @@ class CollaborativeCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
+            max_rpm=5
         )
 
     @task
@@ -246,6 +251,8 @@ class CollaborativeCrew():
             config=self.tasks_config['final_prediction_task'], # type: ignore[index]
             output_file='report.json'
         )
+
+
 
     @crew
     def crew(self) -> Crew:

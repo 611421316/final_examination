@@ -2,21 +2,27 @@
 
 internet_research_task:
   description: >
-    Provide general insights about restaurant reviews and rating behavior.
+    Provide general insights about restaurant reviews and rating behavior using internet search if available.
 
     Focus on:
-    - What makes users give 1–2 stars
-    - What makes users give 3 stars
-    - What makes users give 4–5 stars
-    - Common factors: food, service, price, waiting time, atmosphere
+    - Why users give 1–2 stars
+    - Why users give 3 stars
+    - Why users give 4–5 stars
+    - Common rating factors: food, service, price, waiting time, atmosphere
 
-    IMPORTANT:
-    - Do NOT fabricate data about the specific user or item
-    - Provide only general patterns
-    - Keep it concise (max 5 bullet points)
+    REQUIRED ACTIONS:
+    - Call search_internet using a natural language query.
+    - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
+
+    STRICT RULES:
+    - Do NOT fabricate information about user {user_id} or business {item_id}
+    - Only provide general restaurant rating patterns
+    - Keep the output concise
+    - Maximum 5 bullet points
+    - NEVER pass a dictionary with a "description" key to the tool. Use "search_query".
 
   expected_output: >
-    Concise bullet points describing rating behavior patterns (1–2, 3, 4–5 stars).
+    Concise bullet points about general restaurant rating behavior.
 
   agent: internet_researcher
 
@@ -114,10 +120,10 @@ predict_review_task:
 
   expected_output: >
     Output ONLY a valid JSON object:
-    {"stars": <Integer between 1 and 5>, "review": "<natural review text>"}
+    {"stars": <float between 1.0 and 5.0>, "review": "<natural review text>"}
 
     RULES:
-    - stars must be an integer between 1 and 5
+    - stars must be an float between 1.0 and 5.0
     - review must be realistic and consistent with stars
     - NO explanation
     - NO markdown
