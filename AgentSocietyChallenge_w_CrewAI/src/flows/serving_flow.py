@@ -2,7 +2,7 @@ import json
 import re
 from pydantic import BaseModel
 from crewai.flow.flow import Flow, listen, start
-from src.crews.simulation_crew import SimulationCrew
+from src.crews.crew_sequential import SequentialCrew
 
 
 def extract_json_from_output(raw_output: str) -> dict:
@@ -62,7 +62,7 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
 
         result = None
         try:
-            result = SimulationCrew().crew().kickoff(inputs=inputs)
+            result = SequentialCrew().crew().kickoff(inputs=inputs)
             data = None
             pydantic_obj = getattr(result, "pydantic", None)
 

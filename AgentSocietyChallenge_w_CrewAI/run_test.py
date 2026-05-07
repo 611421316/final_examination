@@ -45,7 +45,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as
 # ======================================================================
 # Instructor-configured constants — fill in before distributing to students
 # ======================================================================
-INSTRUCTOR_EMAIL = "yc.ho@gms.ndhu.edu.tw"
+# INSTRUCTOR_EMAIL = "yc.ho@gms.ndhu.edu.tw"
+INSTRUCTOR_EMAIL = "611421316@gms.ndhu.edu.tw"
 # App Password is NOT stored here — it is entered by the student at runtime
 # (prompted in Step 2 of the interactive flow).
 
@@ -62,8 +63,8 @@ parser.add_argument("--test-set", default=None,
                     metavar="ZIP", help="Local path to test set zip (overrides Google Drive download)")
 parser.add_argument("--threads",  type=int, default=1,   metavar="N",
                     help="Worker threads (default: 1 = sequential)")
-parser.add_argument("--timeout",  type=int, default=300, metavar="SEC",
-                    help="Per-task timeout in seconds (default: 300)")
+parser.add_argument("--timeout",  type=int, default=1200, metavar="SEC",
+                    help="Per-task timeout in seconds (default: 900)")
 parser.add_argument("--mock",     action="store_true",
                     help="Use mock LLM (no token cost) — for dry-run / testing only")
 args = parser.parse_args()
