@@ -50,15 +50,6 @@ NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
 # The default_llm object already carries the Nvidia base_url for actual LLM calls.
 os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 
-with open('docs/eda_knowledge.md', 'r', encoding='utf-8') as f:
-    eda_content = f.read()
-
-eda_knowledge = StringKnowledgeSource(
-    content=eda_content,
-    metadata={"source": "EDA for RAG"}
-)
-
-
 # Embedding Model for converting text to numerical representations
 embedding_model = HuggingFaceEmbeddings(
     model_name='BAAI/bge-small-en-v1.5'
@@ -249,7 +240,7 @@ class SequentialCrew():
                 self.predict_review_task(),
         ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge, eda_knowledge],
+            knowledge_sources=[schema_knowledge],
             embedder=rag_config["embedding_model"],
             verbose=True
         )
