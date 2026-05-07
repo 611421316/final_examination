@@ -1,4 +1,57 @@
 # === Step 5: Strictly Separated Task Definitions ===
+analyze_user_task:
+  description: >
+    Analyze user {user_id} using available tools.
+
+    REQUIRED ACTIONS:
+    - Step 1: Call search_user_profile_data using the EXACT user_id {user_id}.
+    - Step 2: Call search_historical_reviews_data using the EXACT user_id {user_id}.
+    - DO NOT call both tools at the same time. Call them ONE AT A TIME.
+
+    Example:
+    Action: search_user_profile_data
+    Action Input: {{"search_query": "Information for user {user_id}"}}
+
+    Then:
+    - Identify average rating
+    - Identify sentiment tendency (positive/neutral/negative)
+    - Identify common keywords or preferences (e.g. food quality, service, price)
+
+    STRICT RULES:
+    - MUST use tool outputs
+    - ALWAYS include the EXACT string "{user_id}" in your search_query.
+    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+
+  expected_output: >
+    A structured markdown report including:
+    - Average rating
+    - Sentiment tendency
+    - Key preferences
+    - Notable behavior patterns
+
+  agent: user_analyst
+
+
+internet_research_task:
+  description: >
+    Provide general insights about restaurant reviews and rating behavior.
+
+    Focus on:
+    - What makes users give 1–2 stars
+    - What makes users give 3 stars
+    - What makes users give 4–5 stars
+    - Common factors: food, service, price, waiting time, atmosphere
+
+    IMPORTANT:
+    - Do NOT fabricate data about the specific user or item
+    - Provide only general patterns
+    - Keep it concise (max 5 bullet points)
+
+  expected_output: >
+    Concise bullet points describing rating behavior patterns (1–2, 3, 4–5 stars).
+
+  agent: internet_researcher
+
 analyze_item_task:
   description: >
     Use the search_restaurant_feature_data tool to find information about business {item_id}.
