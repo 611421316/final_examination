@@ -39,9 +39,9 @@ analyze_user_task:
     Action Input: {{"user_id": "{user_id}"}}
 
     STEP 2 - Analyze the retrieved data:
-    - Identify average rating (from average_stars field)
-    - Identify review_count and yelping_since
-    - Identify fans and compliment metrics (to understand engagement)
+    - Identify EXACT average rating (from average_stars field). This is critical.
+    - Identify review_count and yelping_since.
+    - Identify top 3 common compliments (what the user likes) and top 3 complaints (what the user hates) based on historical behavior or general profile metrics.
 
     STRICT RULES:
     - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
@@ -51,9 +51,10 @@ analyze_user_task:
 
   expected_output: >
     A structured markdown report including:
-    - Average rating
+    - Exact Average Rating (Number)
+    - Top 3 Likes / Compliments
+    - Top 3 Dislikes / Complaints
     - Review count and tenure
-    - Engagement metrics
     - User Profile Status (Normal or Default/New User)
 
   agent: user_analyst
@@ -71,9 +72,9 @@ analyze_item_task:
     Action Input: {{"item_id": "{item_id}"}}
 
     STEP 2 - Analyze the retrieved data:
-    - Identify categories (e.g. restaurant type)
-    - Identify star rating and review_count
-    - Identify attributes (e.g. price range, ambiance) and hours
+    - Identify EXACT star rating (from stars field) and review_count. This is critical.
+    - Identify categories (e.g. restaurant type).
+    - Identify top strengths (what people praise) and top weaknesses (what people complain about) based on attributes and hours.
 
     STRICT RULES:
     - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
@@ -83,9 +84,10 @@ analyze_item_task:
 
   expected_output: >
     A structured markdown report including:
+    - Exact Star Rating (Number)
     - Categories
-    - Rating and size
-    - Key attributes
+    - Top Strengths
+    - Top Weaknesses
     - Business Profile Status (Normal or Reconstructed from Web)
 
   agent: item_analyst
@@ -132,11 +134,13 @@ predict_review_task:
     - Review Analysis (from analyze_reviews_task)
     - General patterns (from internet_research_task)
 
-    REASONING & ALIGNMENT REQUIREMENTS:
-    1. Start from the user's average rating (from User Profile) as the anchor rating.
-    2. Check the user's rating distribution in their past reviews: if they give lower ratings on average or are highly critical, adapt the predicted rating downwards. If they are generous, adapt it upwards.
-    3. Look for alignment or conflict: compare the business's common complaints or praise (from Review Analysis) with what the user complains or praises in their past reviews. If the business has a major flaw (e.g. slow service, lack of cleanliness) that the user hates, decrease the rating.
-    4. Generate a review text that mirrors the user's typical length, tone, vocabulary, and sentiment, focusing specifically on the target business's attributes.
+    REASONING & ALIGNMENT REQUIREMENTS (MATHEMATICAL HEURISTIC):
+    1. Base Score = (User Average Rating + Item Star Rating) / 2.
+    2. Feature Matching (Heuristic Adjustment):
+       - If a Top Weakness of the business matches a Top Dislike of the user, SUBTRACT 0.5 to 1.0 from the Base Score.
+       - If a Top Strength of the business matches a Top Like of the user, ADD 0.5 to 1.0 to the Base Score.
+    3. Final Rating constraint: Ensure the final score is between 1.0 and 5.0.
+    4. Text Generation: Generate a review text that mirrors the user's typical length, tone, and vocabulary, while EXPLICITLY mentioning the matched strengths or weaknesses used in your calculation to make it realistic.
 
     STRICT RULES:
     - MUST use previous task outputs

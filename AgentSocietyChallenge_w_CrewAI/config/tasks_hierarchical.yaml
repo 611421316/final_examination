@@ -33,10 +33,10 @@ analyze_user_task:
     Action Input: {{"user_id": "{user_id}"}}
 
     STEP 2 - Analyze:
-    - average stars
+    - Identify EXACT average rating (from average_stars field). This is critical.
     - review count
     - yelping_since
-    - fans and compliment metrics
+    - Identify top 3 common compliments (what the user likes) and top 3 complaints (what the user hates) based on historical behavior or general profile metrics.
 
     STRICT RULES:
     - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
@@ -44,7 +44,7 @@ analyze_user_task:
     - MUST use tool outputs — do NOT invent data
 
   expected_output: >
-    A detailed markdown profile of user {user_id}'s preferences and rating habits.
+    A detailed markdown profile of user {user_id}'s preferences and rating habits, including their EXACT average rating, top likes, and top dislikes.
   agent: user_analyst
 
 
@@ -58,9 +58,8 @@ analyze_item_task:
 
     STEP 2 - Analyze:
     - categories
-    - stars
-    - review count
-    - attributes and hours
+    - Identify EXACT star rating (from stars field) and review_count. This is critical.
+    - Identify top strengths (what people praise) and top weaknesses (what people complain about) based on attributes and hours.
 
     STRICT RULES:
     - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
@@ -68,7 +67,7 @@ analyze_item_task:
     - MUST use tool outputs — do NOT invent data
 
   expected_output: >
-    A detailed markdown report of business {item_id}'s features and attributes.
+    A detailed markdown report of business {item_id}'s features and attributes, including their EXACT star rating, top strengths, and top weaknesses.
   agent: item_analyst
 
 
@@ -107,14 +106,16 @@ predict_review_task:
     - Do NOT claim data was not found unless previous tasks explicitly failed.
     - Consider alignment between user rating habits and restaurant quality.
 
-    REASONING & ALIGNMENT:
-    1. Start from the user's average rating (from User Profile) as the anchor rating.
-    2. Check the user's rating distribution in their past reviews: if they give lower ratings on average or are highly critical, adapt the predicted rating downwards. If they are generous, adapt it upwards.
-    3. Look for alignment or conflict: compare the business's common complaints or praise (from Review Analysis) with what the user complains or praises in their past reviews. If the business has a major flaw (e.g. slow service, lack of cleanliness) that the user hates, decrease the rating.
-    4. Generate a review text that mirrors the user's typical length, tone, vocabulary, and sentiment, focusing specifically on the target business's attributes.
+    REASONING & ALIGNMENT REQUIREMENTS (MATHEMATICAL HEURISTIC):
+    1. Base Score = (User Average Rating + Item Star Rating) / 2.
+    2. Feature Matching (Heuristic Adjustment):
+       - If a Top Weakness of the business matches a Top Dislike of the user, SUBTRACT 0.5 to 1.0 from the Base Score.
+       - If a Top Strength of the business matches a Top Like of the user, ADD 0.5 to 1.0 to the Base Score.
+    3. Final Rating constraint: Ensure the final score is between 1.0 and 5.0.
+    4. Text Generation: Generate a review text that mirrors the user's typical length, tone, and vocabulary, while EXPLICITLY mentioning the matched strengths or weaknesses used in your calculation to make it realistic.
 
     STRICT RULES:
-    * stars: Predict the exact Star rating as a pure integer from 1 to 5 (e.g., 1, 2, 3, 4, or 5). Use traditional rounding where a rating of 4.5 or higher rounds to 5, and below 4.5 rounds to 4.
+    * stars: Predict the Star rating as a float from 1.0 to 5.0 (e.g., 1.0, 3.5, 4.0, or 5.0).
     * review: must be realistic and consistent with stars
     * DO NOT mention raw item IDs or user IDs
     * Avoid generic repeated phrases
@@ -125,7 +126,7 @@ predict_review_task:
   expected_output: >
     Output ONLY one valid JSON object with exactly two keys: stars and review.
     Example output:
-    {{"stars": 4, "review": "The review text..."}}
+    {{"stars": 4.0, "review": "The review text..."}}
   
     Do NOT include markdown.
     Do NOT include explanations.
