@@ -34,6 +34,7 @@ from crewai.agents.agent_builder.base_agent import BaseAgent
 from crewai.tools import tool
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from typing import List
+from src.tools.exact_lookup_tools import lookup_user_by_id, lookup_item_by_id, lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool
 import os
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -148,7 +149,7 @@ item_rag_tool = create_rag_tool(
 
 review_rag_tool = create_rag_tool(
     json_path='data/train_review.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Review_3',
+    collection_name='benchmark_true_fresh_index_Filtered_Review_5',
     config=rag_config,
     name="search_historical_reviews_data",
     description=(
@@ -201,7 +202,7 @@ class SequentialCrew():
     def user_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
-            tools=[user_rag_tool, review_rag_tool],
+            tools=[lookup_user_by_id, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -211,7 +212,17 @@ class SequentialCrew():
     def item_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
-            tools=[item_rag_tool, review_rag_tool],
+            tools=[lookup_item_by_id, none_tool, lowercase_none_tool],
+            verbose=True,
+            llm=default_llm,
+            max_rpm=5
+        )
+
+    @agent
+    def review_analyst(self) -> Agent:
+        return Agent(
+            config=self.agents_config['review_analyst'], # type: ignore[index]
+            tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -230,7 +241,6 @@ class SequentialCrew():
     def analyze_user_task(self) -> Task:
         return Task(
             config=self.tasks_config['analyze_user_task'], # type: ignore[index]
-            tools=[user_rag_tool, review_rag_tool]
         )
 
     @task
@@ -247,6 +257,12 @@ class SequentialCrew():
         )
 
     @task
+    def analyze_reviews_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['analyze_reviews_task'], 
+        )
+
+    @task
     def predict_review_task(self) -> Task:
         return Task(
             config=self.tasks_config['predict_review_task'], # type: ignore[index]
@@ -259,6 +275,7 @@ class SequentialCrew():
             agents=[
                 self.user_analyst(),
                 self.item_analyst(),
+                self.review_analyst(),
                 self.internet_researcher(),
                 self.prediction_modeler(),
             ],
@@ -266,6 +283,7 @@ class SequentialCrew():
                 self.analyze_user_task(),
                 self.analyze_item_task(),
                 self.internet_researcher_task(),
+                self.analyze_reviews_task(),
                 self.predict_review_task(),
         ],
             process=Process.sequential,

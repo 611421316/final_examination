@@ -31,36 +31,28 @@ analyze_user_task:
   description: >
     Analyze user {user_id} using available RAG tools.
 
-    CRITICAL TOOL CALL RULES:
-    1. You MUST call tools ONE AT A TIME.
-    2. THE ONLY VALID INPUT KEY IS "search_query".
-    3. NEVER USE "user_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find profile statistics for user_id {user_id}"}}
-    
-    Example:
-    Action: search_user_profile_data
-    Action Input: {{"search_query": "Find profile statistics for user_id {user_id}"}}
+    STEP 1 - Get user profile (REQUIRED, do this FIRST):
+    Action: lookup_user_by_id
+    Action Input: {{"user_id": "{user_id}"}}
 
-    Then analyze:
-    - Average rating behavior
-    - Sentiment tendency
-    - Common preferences
-    - Notable behavior patterns
-    - Whether this user is strict, neutral, or generous
+    STEP 2 - Analyze the retrieved data:
+    - Average rating behavior (from average_stars)
+    - Review count and yelping_since
+    - Fans and compliment metrics
 
     STRICT RULES:
-    - MUST use tool outputs
-    - Do NOT invent user facts
+    - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent user facts
     - Action Input must be ONE dictionary only
     - Do NOT return a list of JSON objects in Action Input
 
   expected_output: >
     A structured markdown user profile report including:
     - Average rating
-    - Sentiment tendency
-    - Key preferences
-    - Notable behavior patterns
-    - Rating style
+    - Review count and tenure
+    - Engagement metrics
+    - User Profile Status (Normal or Default/New User)
 
   agent: user_analyst
 
@@ -69,44 +61,60 @@ analyze_item_task:
   description: >
     Analyze business {item_id} using available RAG tools.
 
-    CRITICAL TOOL CALL RULES:
-    1. You MUST call tools ONE AT A TIME.
-    2. THE ONLY VALID INPUT KEY IS "search_query".
-    3. NEVER USE "item_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find features and categories for item_id {item_id}"}}
-    
-    Example:
-    Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "Find features and categories for item_id {item_id}"}}
+    STEP 1 - Get business profile (REQUIRED, do this FIRST):
+    Action: lookup_item_by_id
+    Action Input: {{"item_id": "{item_id}"}}
 
-    Then analyze:
+    STEP 2 - Analyze the retrieved data:
     - Restaurant categories
-    - Star rating
-    - Attributes
-    - Common positive feedback
-    - Common negative feedback
-    - Overall public sentiment
+    - Star rating and review_count
+    - Attributes and hours
 
     STRICT RULES:
-    - MUST use tool outputs
-    - Do NOT invent business facts
+    - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent business facts
     - Action Input must be ONE dictionary only
 
   expected_output: >
     A structured markdown business report including:
     - Categories
-    - Star rating
-    - Attributes
-    - Positive feedback
-    - Negative feedback
-    - Overall sentiment
+    - Rating and size
+    - Key attributes
+    - Business Profile Status (Normal or Reconstructed from Web)
 
   agent: item_analyst
 
 
+analyze_reviews_task:
+  description: >
+    Retrieve and analyze historical reviews for user {user_id} and business {item_id}.
+
+    STEP 1 - Retrieve reviews (REQUIRED):
+    Action: lookup_reviews_by_user_and_item
+    Action Input: {{"user_id": "{user_id}", "item_id": "{item_id}"}}
+
+    STEP 2 - Analyze:
+    - Highlight if a direct past review exists between the user and the business.
+    - Otherwise, analyze the user's typical ratings/sentiments and the business's common feedback.
+
+    STRICT RULES:
+    - You MUST call tools ONE AT A TIME.
+    - If no reviews are found, perform cross-feature matching based on restaurant categories (from analyze_item_task) and user averages (from analyze_user_task).
+
+  expected_output: >
+    A structured markdown report highlighting:
+    - Direct review match (if any)
+    - User's typical review tone, preferences, and rating habits
+    - Business's strengths, weaknesses, and customer feedback themes
+    - Overall match sentiment
+
+  agent: review_analyst
+
+
 collaborative_reasoning_task:
   description: >
-    Combine the User Profile, Item Report, and External Research.
+    Combine the User Profile, Item Report, Review Analysis, and External Research.
 
     Your job is to reason about whether business {item_id} matches user {user_id}'s preferences.
 
@@ -131,8 +139,8 @@ collaborative_reasoning_task:
 
 predict_review_task:
   description: >
-    Using the User Profile, Item Report, External Research, and Collaborative Reasoning,
-    predict the Stars from 1 to 5 and write the Review Text.
+    Using the User Profile, Item Report, External Research, Review Analysis, and Collaborative Reasoning,
+    predict extact the Stars from 1.0 to 5.0 and write the Review Text.
 
     Consider:
     - User's historical rating behavior
@@ -158,7 +166,7 @@ review_prediction_task:
     Review the draft prediction from the Prediction Modeler.
 
     Check:
-    - Whether predicted stars are consistent with the user's rating habits
+    - Whether predicted stars are consistent with the user's habits
     - Whether the review text matches business features
     - Whether the prediction is grounded in retrieved data
     - Whether the JSON format is valid
@@ -185,6 +193,7 @@ final_prediction_task:
     - User Profile
     - Item Report
     - External Research
+    - Review Analysis
     - Collaborative Reasoning
     - Draft Prediction
     - Reviewer Feedback
@@ -192,8 +201,8 @@ final_prediction_task:
     STRICT RULES:
     - Output ONLY a valid JSON object
     - Use exactly two keys: "stars" and "review"
-    - stars must ONLY be one of: [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-    - review must be realistic and consistent with stars
+    - stars: Predict the exact Star rating (1.0 to 5.0)
+    - review: must be realistic and consistent with stars
     - Avoid generic repeated phrases
     - DO NOT mention raw item IDs or user IDs
     - Do NOT include markdown

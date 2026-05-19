@@ -26,72 +26,90 @@ internet_research_task:
 
 analyze_user_task:
   description: >
-    Find the exact profile and historical reviews for user_id "{user_id}".
+    Find the exact profile for user_id "{user_id}".
 
-    CRITICAL TOOL CALL RULES:
-    1. You MUST call tools ONE AT A TIME.
-    2. THE ONLY VALID INPUT KEY IS "search_query".
-    3. NEVER USE "user_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find profile statistics for user_id {user_id}"}}
-    
-    Example:
-    Action: search_user_profile_data
-    Action Input: {{"search_query": "Find profile statistics for user_id {user_id}"}}
+    STEP 1 - Get user profile (REQUIRED, do this FIRST):
+    Action: lookup_user_by_id
+    Action Input: {{"user_id": "{user_id}"}}
 
-    Analyze:
+    STEP 2 - Analyze:
     - average stars
     - review count
-    - rating tendency
-    - common review patterns
-    - sentiment tendency
+    - yelping_since
+    - fans and compliment metrics
+
+    STRICT RULES:
+    - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent data
 
   expected_output: >
     A detailed markdown profile of user {user_id}'s preferences and rating habits.
-    If exact user data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
   agent: user_analyst
 
 
 analyze_item_task:
   description: >
-    Find the exact business profile and historical reviews for item_id "{item_id}".
+    Find the exact business profile for item_id "{item_id}".
 
-    CRITICAL TOOL CALL RULES:
-    1. You MUST call tools ONE AT A TIME.
-    2. THE ONLY VALID INPUT KEY IS "search_query".
-    3. NEVER USE "item_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find features and categories for item_id {item_id}"}}
-    
-    Example:
-    Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "Find features and categories for item_id {item_id}"}}
+    STEP 1 - Get business profile (REQUIRED, do this FIRST):
+    Action: lookup_item_by_id
+    Action Input: {{"item_id": "{item_id}"}}
 
-    Then analyze:
+    STEP 2 - Analyze:
     - categories
     - stars
     - review count
-    - strengths
-    - weaknesses
-    - public sentiment
+    - attributes and hours
+
+    STRICT RULES:
+    - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent data
 
   expected_output: >
-    A detailed markdown report of business {item_id}'s features, pros, and cons.
-    If exact business data is weak, clearly say which retrieved evidence is weak, but still summarize usable evidence.
+    A detailed markdown report of business {item_id}'s features and attributes.
   agent: item_analyst
+
+
+analyze_reviews_task:
+  description: >
+    Retrieve and analyze historical reviews for user {user_id} and business {item_id}.
+
+    STEP 1 - Retrieve reviews (REQUIRED):
+    Action: lookup_reviews_by_user_and_item
+    Action Input: {{"user_id": "{user_id}", "item_id": "{item_id}"}}
+
+    STEP 2 - Analyze:
+    - Highlight if a direct past review exists between the user and the business.
+    - Otherwise, analyze the user's typical ratings/sentiments and the business's common feedback.
+
+    STRICT RULES:
+    - You MUST call tools ONE AT A TIME.
+    - If no reviews are found, perform cross-feature matching based on restaurant categories (from analyze_item_task) and user averages (from analyze_user_task).
+
+  expected_output: >
+    A structured markdown report highlighting:
+    - Direct review match (if any)
+    - User's typical review tone, preferences, and rating habits
+    - Business's strengths, weaknesses, and customer feedback themes
+    - Overall match sentiment
+
+  agent: review_analyst
 
 
 predict_review_task:
   description: >
-    Using the User Profile and Item Report from the previous tasks, predict the Stars and Review Text.
+    Using the User Profile, Item Report, and Review Analysis from the previous tasks, predict the Stars and Review Text.
 
     RULES:
     - Base the prediction only on retrieved evidence from previous tasks.
-    - Do NOT claim data was not found unless both previous tasks explicitly failed.
+    - Do NOT claim data was not found unless previous tasks explicitly failed.
     - Consider alignment between user rating habits and restaurant quality.
 
     STRICT RULES:
-    * stars must ONLY be one of:
-      [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-    * review must be realistic and consistent with stars
+    * stars: Predict the exact Star rating (1.0 to 5.0)
+    * review: must be realistic and consistent with stars
     * DO NOT mention raw item IDs or user IDs
     * Avoid generic repeated phrases
     * NO explanation

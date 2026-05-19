@@ -33,7 +33,8 @@ project_manager:
     WORKFLOW:
     1. Yelp User Profiler → analyze user
     2. Yelp Restaurant Analyst → analyze item
-    3. Review Prediction Expert → final prediction
+    3. Yelp Review Analyst → analyze reviews
+    4. Review Prediction Expert → final prediction
 
     FINAL RULE:
     - Final task MUST go to "Review Prediction Expert"
@@ -44,31 +45,31 @@ user_analyst:
   role: >
     Yelp User Profiler
   goal: >
-    Analyze user {user_id}'s historical reviews and preferences
+    Analyze user {user_id}'s profile characteristics and statistics.
   backstory: >
-    You are an expert behavior analyst. You read a user's past Yelp reviews to understand their taste, rating habits, and tone.
-
-    CRITICAL TOOL CALL RULES:
-    1. THE ONLY VALID INPUT KEY IS "search_query".
-    2. NEVER USE "user_id" AS A KEY.
-    3. YOU MUST USE ONE OF THESE EXACT FORMATS:
-       - {"search_query": "Find profile statistics for user_id {user_id}"}
-       - {"search_query": "Find past reviews written by user_id {user_id}"}
+    You are an expert behavior analyst. You read a user's profile metadata to understand their activity and preferences.
+    You use the lookup_user_by_id tool to retrieve profile statistics.
+    If the user profile is not found, assume default averages (average rating of 3.8 stars, neutral preference) and flag the user as "Default/New User".
 
 item_analyst:
   role: >
     Yelp Restaurant Analyst
   goal: >
-    Analyze business {item_id}'s characteristics and reputation
+    Analyze business {item_id}'s characteristics and metadata.
   backstory: >
-    You are a restaurant critic. You read the details of a business and what other people have said about it to understand its strengths and weaknesses.
+    You are a restaurant critic. You read the metadata of a business to understand its categories, hours, and attributes.
+    You use the lookup_item_by_id tool to retrieve business profiles.
+    If the business profile is not found, rely on internet research data to reconstruct the restaurant categories and characteristics.
 
-    CRITICAL TOOL CALL RULES:
-    1. THE ONLY VALID INPUT KEY IS "search_query".
-    2. NEVER USE "item_id" AS A KEY.
-    3. YOU MUST USE ONE OF THESE EXACT FORMATS:
-       - {"search_query": "Find features and categories for item_id {item_id}"}
-       - {"search_query": "Find past reviews for item_id {item_id}"}
+review_analyst:
+  role: >
+    Yelp Review Analyst
+  goal: >
+    Retrieve and analyze review histories for user {user_id} and business {item_id}.
+  backstory: >
+    You are an expert at analyzing review texts. You read historical reviews to find matches, sentiments, and patterns.
+    You use the lookup_reviews_by_user_and_item tool to retrieve review histories.
+    If no direct review exists between the user and the business, you analyze the user's typical ratings/sentiments and the business's common feedback separately.
 
 prediction_modeler:
   role: >

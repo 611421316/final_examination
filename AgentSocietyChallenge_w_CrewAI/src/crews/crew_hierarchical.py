@@ -26,6 +26,7 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from crewai_tools import JSONSearchTool, SerperDevTool
+from src.tools.exact_lookup_tools import lookup_user_by_id, lookup_item_by_id, lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool
 
 serper_tool = SerperDevTool(
     name="search_internet",
@@ -197,7 +198,7 @@ class HierarchicalCrew():
     def user_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
-            tools=[user_rag_tool, review_rag_tool],
+            tools=[lookup_user_by_id, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -207,7 +208,17 @@ class HierarchicalCrew():
     def item_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
-            tools=[item_rag_tool, review_rag_tool],
+            tools=[lookup_item_by_id, none_tool, lowercase_none_tool],
+            verbose=True,
+            llm=default_llm,
+            max_rpm=5
+        )
+
+    @agent
+    def review_analyst(self) -> Agent:
+        return Agent(
+            config=self.agents_config['review_analyst'], # type: ignore[index]
+            tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -254,6 +265,12 @@ class HierarchicalCrew():
         )
 
     @task
+    def analyze_reviews_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['analyze_reviews_task'], # type: ignore[index]
+        )
+
+    @task
     def predict_review_task(self) -> Task:
         return Task(
             config=self.tasks_config['predict_review_task'], # type: ignore[index]
@@ -273,12 +290,14 @@ class HierarchicalCrew():
                 self.internet_researcher(),
                 self.user_analyst(),
                 self.item_analyst(),
+                self.review_analyst(),
                 self.prediction_modeler(),
             ],
             tasks=[
                 self.internet_research_task(),
                 self.analyze_user_task(),
                 self.analyze_item_task(),
+                self.analyze_reviews_task(),
                 self.predict_review_task(),
             ],
             process=Process.hierarchical,
