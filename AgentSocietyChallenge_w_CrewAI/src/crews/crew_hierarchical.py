@@ -198,7 +198,7 @@ class HierarchicalCrew():
     def user_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
-            tools=[lookup_user_by_id, none_tool, lowercase_none_tool],
+            tools=[lookup_user_by_id],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -208,7 +208,7 @@ class HierarchicalCrew():
     def item_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
-            tools=[lookup_item_by_id, none_tool, lowercase_none_tool],
+            tools=[lookup_item_by_id],
             verbose=True,
             llm=default_llm,
             max_rpm=5
@@ -218,7 +218,7 @@ class HierarchicalCrew():
     def review_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['review_analyst'], # type: ignore[index]
-            tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool],
+            tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user],
             verbose=True,
             llm=default_llm,
             max_rpm=5

@@ -132,10 +132,11 @@ predict_review_task:
     - Review Analysis (from analyze_reviews_task)
     - General patterns (from internet_research_task)
 
-    REASONING REQUIREMENTS:
-    - Compare user preferences vs item characteristics
-    - Determine if the item matches the user's expectations
-    - Adjust rating accordingly
+    REASONING & ALIGNMENT REQUIREMENTS:
+    1. Start from the user's average rating (from User Profile) as the anchor rating.
+    2. Check the user's rating distribution in their past reviews: if they give lower ratings on average or are highly critical, adapt the predicted rating downwards. If they are generous, adapt it upwards.
+    3. Look for alignment or conflict: compare the business's common complaints or praise (from Review Analysis) with what the user complains or praises in their past reviews. If the business has a major flaw (e.g. slow service, lack of cleanliness) that the user hates, decrease the rating.
+    4. Generate a review text that mirrors the user's typical length, tone, vocabulary, and sentiment, focusing specifically on the target business's attributes.
 
     STRICT RULES:
     - MUST use previous task outputs
@@ -148,7 +149,7 @@ predict_review_task:
     {"stars": <float between 1.0 and 5.0>, "review": "<natural review text>"}
 
     RULES:
-    - stars: Predict the exact Star rating (1.0 to 5.0)
+    - stars: Predict the Star rating as a float from 1.0 to 5.0 (e.g., 1.0, 3.5, 4.0, or 5.0).
     - review: must be realistic and consistent with stars
     - DO NOT mention raw item IDs or user IDs
     - Avoid generic repeated phrases

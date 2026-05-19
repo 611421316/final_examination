@@ -149,7 +149,7 @@ item_rag_tool = create_rag_tool(
 
 review_rag_tool = create_rag_tool(
     json_path='data/train_review.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Review_5',
+    collection_name='benchmark_true_fresh_index_Filtered_Review_3',
     config=rag_config,
     name="search_historical_reviews_data",
     description=(

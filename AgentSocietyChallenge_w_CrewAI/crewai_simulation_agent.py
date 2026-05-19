@@ -38,7 +38,8 @@ class CrewAISimulationAgent(SimulationAgent):
         final_state_dict = flow.kickoff()
         
         # 5. 按照 AgentSociety Track 1 要求，回傳 dictionary
+        raw_stars = float(final_state_dict.get('predicted_rating', 4.0))
         return {
-            'stars': float(final_state_dict.get('predicted_rating', 4.0)),
+            'stars': raw_stars,
             'review': str(final_state_dict.get('generated_review', 'Good.'))
         }

@@ -107,8 +107,14 @@ predict_review_task:
     - Do NOT claim data was not found unless previous tasks explicitly failed.
     - Consider alignment between user rating habits and restaurant quality.
 
+    REASONING & ALIGNMENT:
+    1. Start from the user's average rating (from User Profile) as the anchor rating.
+    2. Check the user's rating distribution in their past reviews: if they give lower ratings on average or are highly critical, adapt the predicted rating downwards. If they are generous, adapt it upwards.
+    3. Look for alignment or conflict: compare the business's common complaints or praise (from Review Analysis) with what the user complains or praises in their past reviews. If the business has a major flaw (e.g. slow service, lack of cleanliness) that the user hates, decrease the rating.
+    4. Generate a review text that mirrors the user's typical length, tone, vocabulary, and sentiment, focusing specifically on the target business's attributes.
+
     STRICT RULES:
-    * stars: Predict the exact Star rating (1.0 to 5.0)
+    * stars: Predict the exact Star rating as a pure integer from 1 to 5 (e.g., 1, 2, 3, 4, or 5). Use traditional rounding where a rating of 4.5 or higher rounds to 5, and below 4.5 rounds to 4.
     * review: must be realistic and consistent with stars
     * DO NOT mention raw item IDs or user IDs
     * Avoid generic repeated phrases
@@ -119,7 +125,7 @@ predict_review_task:
   expected_output: >
     Output ONLY one valid JSON object with exactly two keys: stars and review.
     Example output:
-    {{"stars": 4.0, "review": "The review text..."}}
+    {{"stars": 4, "review": "The review text..."}}
   
     Do NOT include markdown.
     Do NOT include explanations.
