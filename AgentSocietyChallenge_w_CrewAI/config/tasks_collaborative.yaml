@@ -35,11 +35,11 @@ analyze_user_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "user_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find profile statistics for user_id {user_id}"}}
     
     Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
+    Action Input: {{"search_query": "Find profile statistics for user_id {user_id}"}}
 
     Then analyze:
     - Average rating behavior
@@ -73,11 +73,11 @@ analyze_item_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "item_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find features and categories for item_id {item_id}"}}
     
     Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
+    Action Input: {{"search_query": "Find features and categories for item_id {item_id}"}}
 
     Then analyze:
     - Restaurant categories
@@ -192,8 +192,10 @@ final_prediction_task:
     STRICT RULES:
     - Output ONLY a valid JSON object
     - Use exactly two keys: "stars" and "review"
-    - "stars" must be an float from 1.0 to 5.0
-    - "review" must be a string
+    - stars must ONLY be one of: [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    - review must be realistic and consistent with stars
+    - Avoid generic repeated phrases
+    - DO NOT mention raw item IDs or user IDs
     - Do NOT include markdown
     - Do NOT include explanations
     - Do NOT include text before or after the JSON

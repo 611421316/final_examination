@@ -32,11 +32,11 @@ analyze_user_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "user_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find profile statistics for user_id {user_id}"}}
     
     Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
+    Action Input: {{"search_query": "Find profile statistics for user_id {user_id}"}}
 
     Analyze:
     - average stars
@@ -59,11 +59,11 @@ analyze_item_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "item_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find features and categories for item_id {item_id}"}}
     
     Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
+    Action Input: {{"search_query": "Find features and categories for item_id {item_id}"}}
 
     Then analyze:
     - categories
@@ -87,14 +87,22 @@ predict_review_task:
     - Base the prediction only on retrieved evidence from previous tasks.
     - Do NOT claim data was not found unless both previous tasks explicitly failed.
     - Consider alignment between user rating habits and restaurant quality.
-    - Stars must be an float from 1.0 to 5.0.
-    - Review must sound like a realistic Yelp-style review.
+
+    STRICT RULES:
+    * stars must ONLY be one of:
+      [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+    * review must be realistic and consistent with stars
+    * DO NOT mention raw item IDs or user IDs
+    * Avoid generic repeated phrases
+    * NO explanation
+    * NO markdown
+    * NO extra text
 
   expected_output: >
     Output ONLY one valid JSON object with exactly two keys: stars and review.
     Example output:
     {{"stars": 4.0, "review": "The review text..."}}
-
+  
     Do NOT include markdown.
     Do NOT include explanations.
     Do NOT include any text before or after the JSON.

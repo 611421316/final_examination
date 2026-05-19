@@ -111,43 +111,69 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     tool.description = description
     return tool
 
+
 user_rag_tool = create_rag_tool(
     json_path='data/filtered_user.json',
-    collection_name='benchmark_true_fresh_index_Filtered_User_1',
+    collection_name='benchmark_true_fresh_index_Filtered_User_3',
     config=rag_config,
     name="search_user_profile_data",
     description=(
-        "Searches the user profile database using semantic similarity. "
-        "Input MUST be a natural language search_query string, e.g. "
-        "'What are the review habits and average stars for user _BcWyKQL16?'. "
-        "Do NOT pass raw user_id or JSON objects directly."
+    "Search user profile information and statistics using semantic similarity. "
+    "This tool can retrieve a user's name, review_count, average_stars, yelping_since, "
+    "elite, friends, fans, and compliment metrics. "
+
+    "Input MUST be a natural language search_query string. For specific users, ALWAYS include the exact 'user_id' inside the query. "
+
+    "Example queries:\n"
+    "- 'Find profile statistics and average_stars where user_id is _BcWyKQL16ndpBdggh2kNA'\n"
+    "- 'What is the review_count and elite status where user_id is XgE3E2Sm-nhtTS_9PjtJsQ?'\n"
+    
+    "Do NOT pass raw user_id or JSON objects directly as the query."
     )
 )
 
 item_rag_tool = create_rag_tool(
     json_path='data/filtered_item.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Item_1',
+    collection_name='benchmark_true_fresh_index_Filtered_Item_3',
     config=rag_config,
     name="search_restaurant_feature_data",
     description=(
-        "Searches the restaurant/business database using semantic similarity. "
-        "Input MUST be a natural language search_query string, e.g. "
-        "'What are the categories, location, and star rating for business abc123?'. "
-        "Do NOT pass raw item_id or JSON objects directly."
-    )
+    "Search general business and item information using item_id or natural language queries. "
+    "This tool can retrieve business categories, stars, city, state, hours, review_count, and attributes. "
+
+    "For specific businesses, ALWAYS include the exact 'item_id' inside the search_query. "
+
+    "Example queries:\n"
+    "- 'Find business information where item_id is uBDXcXlLR9IuRV1N2m0SPQ'\n"
+    "- 'What are the categories, hours, and stars where item_id is -JIeZE7f926mnRNcdnYk6Q?'\n"
+    "- 'Find highly rated sushi restaurants or auto repair shops'\n"
+    
+    "NEVER pass raw JSON objects."
+)
+
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='data/test_review_subset.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Review_1',
+    json_path='data/train_review.json',
+    collection_name='benchmark_true_fresh_index_Filtered_Review_3',
     config=rag_config,
     name="search_historical_reviews_data",
     description=(
-        "Searches historical review texts using semantic similarity. "
-        "Input MUST be a natural language search_query string, e.g. "
-        "'Find past reviews written by user _BcWyKQL16 about food quality and service'. "
-        "Do NOT pass raw user_id, item_id, or JSON objects directly."
-    )
+    "Search historical review data and texts using semantic similarity. "
+    "This tool retrieves detailed review information including the text, stars, date, "
+    "useful, funny, and cool metrics for specific users or items/businesses. "
+
+    "Input MUST be a natural language search_query string. "
+    "To find reviews for a specific user or business, ALWAYS include the exact 'user_id' or 'item_id' inside the query. "
+
+    "Example queries:\n"
+    "- 'Find past reviews where user_id is _BcWyKQL16ndpBdggh2kNA about food quality and service'\n"
+    "- 'What do the 5-star reviews say where item_id is uBDXcXlLR9IuRV1N2m0SPQ?'\n"
+    "- 'Search for negative text mentioning bad service where item_id is 9zlIJ7Q5W4AENjpGgaNSsQ'\n"
+    
+    "Do NOT pass raw user_id, item_id, or JSON objects directly as the query."
+)
+
 )
 # === Step 2: Inject Global Background Knowledge (CrewAI Knowledge) ===
 with open('docs/Yelp Data Translation.md', 'r', encoding='utf-8') as f:

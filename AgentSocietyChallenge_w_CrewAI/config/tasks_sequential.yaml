@@ -15,7 +15,7 @@ internet_research_task:
     - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
 
     STRICT RULES:
-    - Do NOT fabricate information about user {user_id} or business {item_id}
+    - Do NOT fabricate information about user {user_id} or item_id {item_id}
     - Only provide general restaurant rating patterns
     - Keep the output concise
     - Maximum 5 bullet points
@@ -38,11 +38,11 @@ analyze_user_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "user_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for user_id {user_id}"}}
+    4. ALWAYS PASS THE INPUT AS A JSON DICTIONARY.
     
     Example:
     Action: search_user_profile_data
-    Action Input: {{"search_query": "What are the preferences for user_id {user_id}?"}}
+    Action Input: {{"search_query": "Find profile statistics for user_id {user_id}"}}
 
     Then:
     - Identify average rating
@@ -75,11 +75,11 @@ analyze_item_task:
     1. You MUST call tools ONE AT A TIME.
     2. THE ONLY VALID INPUT KEY IS "search_query".
     3. NEVER USE "item_id" AS A KEY.
-    4. ALWAYS PASS THE INPUT AS: {{"search_query": "Find info for item_id {item_id}"}}
+    4. ALWAYS PASS THE INPUT AS A JSON DICTIONARY.
     
     Example:
     Action: search_restaurant_feature_data
-    Action Input: {{"search_query": "What are the features of business {item_id}?"}}
+    Action Input: {{"search_query": "Find features and categories for item_id {item_id}"}}
 
     Then:
     - Identify categories (e.g. restaurant type)
@@ -129,8 +129,10 @@ predict_review_task:
     {"stars": <float between 1.0 and 5.0>, "review": "<natural review text>"}
 
     RULES:
-    - stars must be an float between 1.0 and 5.0
+    - stars must ONLY be one of: [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
     - review must be realistic and consistent with stars
+    - DO NOT mention raw item IDs or user IDs
+    - Avoid generic repeated phrases
     - NO explanation
     - NO markdown
     - NO extra text

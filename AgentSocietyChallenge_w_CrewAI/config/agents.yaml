@@ -51,7 +51,9 @@ user_analyst:
     CRITICAL TOOL CALL RULES:
     1. THE ONLY VALID INPUT KEY IS "search_query".
     2. NEVER USE "user_id" AS A KEY.
-    3. ALWAYS USE THE EXACT FORMAT: {"search_query": "Find preferences for user_id {user_id}"}
+    3. YOU MUST USE ONE OF THESE EXACT FORMATS:
+       - {"search_query": "Find profile statistics for user_id {user_id}"}
+       - {"search_query": "Find past reviews written by user_id {user_id}"}
 
 item_analyst:
   role: >
@@ -64,7 +66,9 @@ item_analyst:
     CRITICAL TOOL CALL RULES:
     1. THE ONLY VALID INPUT KEY IS "search_query".
     2. NEVER USE "item_id" AS A KEY.
-    3. ALWAYS USE THE EXACT FORMAT: {"search_query": "Find features for business {item_id}"}
+    3. YOU MUST USE ONE OF THESE EXACT FORMATS:
+       - {"search_query": "Find features and categories for item_id {item_id}"}
+       - {"search_query": "Find past reviews for item_id {item_id}"}
 
 prediction_modeler:
   role: >
