@@ -195,7 +195,7 @@ class SequentialCrew():
             tools=[serper_tool],
             verbose=True,
             llm=default_llm,
-            max_rpm=5
+            max_rpm=10
         )
 
     @agent
@@ -205,7 +205,7 @@ class SequentialCrew():
             tools=[lookup_user_by_id, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
-            max_rpm=5
+            max_rpm=10
         )
 
     @agent
@@ -215,7 +215,7 @@ class SequentialCrew():
             tools=[lookup_item_by_id, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
-            max_rpm=5
+            max_rpm=10
         )
 
     @agent
@@ -225,7 +225,7 @@ class SequentialCrew():
             tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
-            max_rpm=5
+            max_rpm=10
         )
 
     @agent
@@ -234,7 +234,7 @@ class SequentialCrew():
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
             verbose=True,
             llm=default_llm,
-            max_rpm=5
+            max_rpm=10
         )
 
     @task

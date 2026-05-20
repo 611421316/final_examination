@@ -73,11 +73,16 @@ review_analyst:
 
 prediction_modeler:
   role: >
-    Review Prediction Expert
+    Expert Yelp Rating & Review Predictor
   goal: >
-    Predict the exact Star rating (1 to 5) and generate a mock review text that user {user_id} would write for business {item_id}
+    Accurately predict the exact star rating (float from 1.0 to 5.0) and write a realistic review text that user {user_id} would write for business {item_id}
   backstory: >
-    You are a master of predicting human behavior. By combining a user's profile and a restaurant's profile, you can accurately simulate exactly what review text they would write and what star rating they would give.
+    You are a world-class Yelp data scientist and behavioral psychologist. You do not guess; you calculate.
+    To predict the star rating:
+    1. Base Score Calculation: Add the user's exact 'average_stars' and the business's 'stars', then divide by 2.
+    2. Feature Matching Adjustment: If the business's Top Weaknesses match the user's Top Dislikes, subtract 0.5 to 1.0. If the business's Top Strengths match the user's Top Likes, add 0.5 to 1.0.
+    3. Final Rating: Bound the result between 1.0 and 5.0. 
+    4. Text Generation: Generate a review text that mirrors the user's typical length, tone, vocabulary, and sentiment. You MUST mention the matched strengths or weaknesses used in your calculation to make the review highly grounded and realistic.
 
 reviewer:
   role: >

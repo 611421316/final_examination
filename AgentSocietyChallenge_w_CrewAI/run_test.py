@@ -45,8 +45,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as
 # ======================================================================
 # Instructor-configured constants — fill in before distributing to students
 # ======================================================================
-# INSTRUCTOR_EMAIL = "yc.ho@gms.ndhu.edu.tw"
-INSTRUCTOR_EMAIL = "611421316@gms.ndhu.edu.tw"
+INSTRUCTOR_EMAIL = "yc.ho@gms.ndhu.edu.tw"
+# INSTRUCTOR_EMAIL = "611421316@gms.ndhu.edu.tw"
 # App Password is NOT stored here — it is entered by the student at runtime
 # (prompted in Step 2 of the interactive flow).
 
