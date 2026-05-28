@@ -66,7 +66,7 @@ evolve-test:  ## 本地整合測試 evaluator（不啟動進化）
 
 .PHONY: visualize
 visualize:  ## 啟動 OpenEvolve 視覺化伺服器（http://127.0.0.1:8080）
-	uv run python /Users/jack.ho/WorkSpace/openevolve/scripts/visualizer.py \
+	uv run python scripts/visualizer.py \
 	    --path $(OUTPUT)
 
 # ============================================================================
