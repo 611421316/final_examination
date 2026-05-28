@@ -4,7 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-CHROMA_DIR = _PROJECT_ROOT / "lmdb_cache" / "my_chroma"
+CHROMA_DIR = _PROJECT_ROOT / "data" / "my_chroma"
 os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
 os.makedirs(CHROMA_DIR, exist_ok=True)
 from crewai import Agent, Crew, Process, Task, LLM
@@ -41,6 +41,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+NVIDIA_API_BASE_ROOT = "https://integrate.api.nvidia.com"
+NVIDIA_API_BASE_V1 = "https://integrate.api.nvidia.com/v1"
 NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
 
 # Keep OPENAI_API_KEY set so Pydantic validation in crewai_tools doesn't crash.
@@ -70,9 +72,8 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     import os
     
     collection_exists = False
-    # Use actual path where CrewAI stores ChromaDB (macOS: ~/Library/Application Support/<AppName>)
-    db_file = str(Path(db_storage_path()) / "chroma.sqlite3")
-    print(f"Check db_file: {db_file}")
+    db_file = "data/my_chroma/chroma.sqlite3"
+    print("Check db_file")
     
     if os.path.exists(db_file):
         print("db_file exists")
@@ -106,7 +107,7 @@ def create_rag_tool(json_path: str, collection_name: str, config: dict, name: st
     return tool
 
 user_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/user.json',
+    json_path='data/filtered_user.json',
     collection_name='benchmark_true_fresh_index_Filtered_User_3',
     config=rag_config,
     name="search_user_profile_data",
@@ -126,7 +127,7 @@ user_rag_tool = create_rag_tool(
 )
 
 item_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/item.json',
+    json_path='data/filtered_item.json',
     collection_name='benchmark_true_fresh_index_Filtered_Item_3',
     config=rag_config,
     name="search_restaurant_feature_data",
@@ -147,7 +148,7 @@ item_rag_tool = create_rag_tool(
 )
 
 review_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/review.json',
+    json_path='data/train_review.json',
     collection_name='benchmark_true_fresh_index_Filtered_Review_3',
     config=rag_config,
     name="search_historical_reviews_data",
@@ -178,10 +179,10 @@ schema_knowledge = StringKnowledgeSource(
 )
 
 @CrewBase
-class SimulationCrew():
+class SequentialCrew():
     """Yelp Recommendation Crew"""
     agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')
-    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')
+    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks_sequential.yaml')
     agents: List[BaseAgent]
     tasks: List[Task]
 

@@ -6,7 +6,11 @@ name = "websocietysimulator"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
+    "crewai-tools>=1.14.1",
     "crewai[litellm]>=1.14.1",
+    "gdown>=6.0.0",
+    "langchain-community>=0.4.1",
+    "langchain-openai>=1.2.1",
     "litellm>=1.83.0",
     "lmdb>=2.2.0",
     "nltk>=3.9.4",
@@ -14,7 +18,10 @@ dependencies = [
     "pandas>=2.3.3",
     "pydantic>=2.11.10",
     "python-dotenv>=1.1.1",
+    "sentence-transformers>=5.4.1",
+    "torch>=2.11.0",
     "tqdm>=4.67.3",
+    "transformers>=5.7.0",
 ]
 
 [tool.poetry]
@@ -41,8 +48,6 @@ torch = "^2.5.1"
 lmdb = "^1.6.2"
 agentsociety = "^1.0.13"
 
-[tool.uv.sources]
-openevolve = { path = "../../openevolve" }
 
 [build-system]
 requires = ["poetry-core>=1.1.0", "poetry>=1.1.0,<1.9.0"]

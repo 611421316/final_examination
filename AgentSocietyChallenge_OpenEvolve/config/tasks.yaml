@@ -1,59 +1,164 @@
-retrieve_data_task:
+# === Step 5: Strictly Separated Task Definitions ===
+
+internet_research_task:
   description: >
-    Use the tool to retrieve all background data for User ID "{user_id}" and Item ID "{item_id}".
-    You MUST use the Interaction Tool Wrapper to query data.
-    You MUST pass a valid JSON dictionary as Action Input, following these exact formats:
+    Provide general insights about restaurant reviews and rating behavior using internet search if available.
 
-    First, query the user profile:
-    Action: Interaction Tool Wrapper
-    Action Input: {{"query_type": "user", "target_id": "{user_id}"}}
+    Focus on:
+    - Why users give 1–2 stars
+    - Why users give 3 stars
+    - Why users give 4–5 stars
+    - Common rating factors: food, service, price, waiting time, atmosphere
 
-    Then, query the item details:
-    Action: Interaction Tool Wrapper
-    Action Input: {{"query_type": "item", "target_id": "{item_id}"}}
+    REQUIRED ACTIONS:
+    - Call search_internet using a natural language query.
+    - The ONLY valid input key for the tool is "search_query". Do NOT use "description" or any other key.
 
-    Then, query the user's historical reviews:
-    Action: Interaction Tool Wrapper
-    Action Input: {{"query_type": "review_by_user", "target_id": "{user_id}"}}
+    STRICT RULES:
+    - Do NOT fabricate information about user {user_id} or item_id {item_id}
+    - Only provide general restaurant rating patterns
+    - Keep the output concise
+    - Maximum 5 bullet points
+    - NEVER pass a dictionary with a "description" key to the tool. Use "search_query".
 
-    Finally, query the item's historical reviews (other users' opinions of this item):
-    Action: Interaction Tool Wrapper
-    Action Input: {{"query_type": "review_by_item", "target_id": "{item_id}"}}
-
-    query_type must be exactly one of: "user", "item", "review_by_user", "review_by_item".
-    You MUST complete all four tool calls above, then compile all results into a summary.
   expected_output: >
-    A markdown summary covering four aspects:
-    1. User's historical preferences, average rating, rating distribution, and writing style.
-    2. Target item's key attributes (category, location, declared stars).
-    3. Item's actual rating distribution from OTHER users' reviews (to calibrate the user's likely rating relative to crowd consensus).
-    4. Any obvious mismatch or alignment between the user's rating habits and the item's typical reception.
-  agent: data_retriever
+    Concise bullet points about general restaurant rating behavior.
 
-analyze_preference_task:
+  agent: internet_researcher
+
+
+# =========================
+# USER ANALYSIS
+# =========================
+analyze_user_task:
   description: >
-    Review the retrieved data for User "{user_id}" and Item "{item_id}", and perform a deep compatibility analysis.
-    Pay special attention to:
-    1. The user's AVERAGE star rating across all their reviews. If they average 3.2 stars, they are a critical reviewer.
-    2. The user's rating DISTRIBUTION - do they mostly give 1-2 stars, 3 stars, or 4-5 stars?
-    3. Whether this item's category/features align with things the user has rated highly or poorly before.
-    4. Do NOT assume the user will like the item. Many users are critical and give low ratings.
-  expected_output: >
-    A psychological analysis report that includes the user's average rating tendency, likely satisfaction level with this specific item, and a preliminary rating estimate with justification.
-  agent: psychological_analyst
+    Analyze user {user_id} using available tools.
 
-simulate_review_task:
-  description: >
-    Based on the preference analysis above, produce the final simulated rating and review.
-    CRITICAL RULES:
-    1. Your star rating MUST reflect the user's actual rating habits. If the user averages 3.0 stars, do NOT give 4.5.
-    2. Write the review in ENGLISH, matching the user's typical vocabulary and tone.
-    3. Be willing to give ratings of 1, 2, or 3 stars if the analysis suggests the user would be critical.
-    4. Your response must contain ONLY a valid JSON object in this exact format:
-    {{"stars": 3.0, "review": "The review text in English..."}}
-    Do NOT include any text before or after the JSON object. Do NOT use double curly braces.
+    STEP 1 - Get user profile (REQUIRED, do this FIRST):
+    Action: lookup_user_by_id
+    Action Input: {{"user_id": "{user_id}"}}
+
+    STEP 2 - Analyze the retrieved data:
+    - Identify EXACT average rating (from average_stars field). This is critical.
+    - Identify review_count and yelping_since.
+    - Identify top 3 common compliments (what the user likes) and top 3 complaints (what the user hates) based on historical behavior or general profile metrics.
+
+    STRICT RULES:
+    - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent data
+    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+
   expected_output: >
-    Output ONLY a valid JSON object with exactly two keys: "stars" (a float from 1.0 to 5.0) and "review" (a string in English).
-    Example: {"stars": 3.0, "review": "The food was decent but nothing special..."}
-    Do NOT include any text before or after the JSON object.
-  agent: behavior_simulator
+    A structured markdown report including:
+    - Exact Average Rating (Number)
+    - Top 3 Likes / Compliments
+    - Top 3 Dislikes / Complaints
+    - Review count and tenure
+    - User Profile Status (Normal or Default/New User)
+
+  agent: user_analyst
+
+
+# =========================
+# ITEM ANALYSIS
+# =========================
+analyze_item_task:
+  description: >
+    Analyze business {item_id} using available tools.
+
+    STEP 1 - Get business profile (REQUIRED, do this FIRST):
+    Action: lookup_item_by_id
+    Action Input: {{"item_id": "{item_id}"}}
+
+    STEP 2 - Analyze the retrieved data:
+    - Identify EXACT star rating (from stars field) and review_count. This is critical.
+    - Identify categories (e.g. restaurant type).
+    - Identify top strengths (what people praise) and top weaknesses (what people complain about) based on attributes and hours.
+
+    STRICT RULES:
+    - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
+    - You MUST call tools ONE AT A TIME
+    - MUST use tool outputs — do NOT invent data
+    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
+
+  expected_output: >
+    A structured markdown report including:
+    - Exact Star Rating (Number)
+    - Categories
+    - Top Strengths
+    - Top Weaknesses
+    - Business Profile Status (Normal or Reconstructed from Web)
+
+  agent: item_analyst
+
+
+# =========================
+# REVIEW ANALYSIS
+# =========================
+analyze_reviews_task:
+  description: >
+    Retrieve and analyze historical reviews for user {user_id} and business {item_id}.
+
+    STEP 1 - Retrieve reviews (REQUIRED):
+    Action: lookup_reviews_by_user_and_item
+    Action Input: {{"user_id": "{user_id}", "item_id": "{item_id}"}}
+
+    STEP 2 - Analyze:
+    - Highlight if a direct past review exists between the user and the business.
+    - Otherwise, analyze the user's typical ratings/sentiments and the business's common feedback.
+
+    STRICT RULES:
+    - You MUST call tools ONE AT A TIME.
+    - If no reviews are found, perform cross-feature matching based on restaurant categories (from analyze_item_task) and user averages (from analyze_user_task).
+
+  expected_output: >
+    A structured markdown report highlighting:
+    - Direct review match (if any)
+    - User's typical review tone, preferences, and rating habits
+    - Business's strengths, weaknesses, and customer feedback themes
+    - Overall match sentiment
+
+  agent: review_analyst
+
+
+# =========================
+# FINAL PREDICTION
+# =========================
+predict_review_task:
+  description: >
+    Predict the rating and generate a review based on:
+
+    - User Profile (from analyze_user_task)
+    - Item Report (from analyze_item_task)
+    - Review Analysis (from analyze_reviews_task)
+    - General patterns (from internet_research_task)
+
+    REASONING & ALIGNMENT REQUIREMENTS (MATHEMATICAL HEURISTIC):
+    1. Base Score = (User Average Rating + Item Star Rating) / 2.
+    2. Feature Matching (Heuristic Adjustment):
+       - If a Top Weakness of the business matches a Top Dislike of the user, SUBTRACT 0.5 to 1.0 from the Base Score.
+       - If a Top Strength of the business matches a Top Like of the user, ADD 0.5 to 1.0 to the Base Score.
+    3. Final Rating constraint: Ensure the final score is between 1.0 and 5.0.
+    4. Text Generation: Generate a review text that mirrors the user's typical length, tone, and vocabulary, while EXPLICITLY mentioning the matched strengths or weaknesses used in your calculation to make it realistic.
+
+    STRICT RULES:
+    - MUST use previous task outputs
+    - DO NOT say "data not found"
+    - DO NOT hallucinate unrelated facts
+    - Keep reasoning implicit (DO NOT print reasoning)
+
+  expected_output: >
+    Output ONLY a valid JSON object:
+    {"stars": <float between 1.0 and 5.0>, "review": "<natural review text>"}
+
+    RULES:
+    - stars: Predict the Star rating as a float from 1.0 to 5.0 (e.g., 1.0, 3.5, 4.0, or 5.0).
+    - review: must be realistic and consistent with stars
+    - DO NOT mention raw item IDs or user IDs
+    - Avoid generic repeated phrases
+    - NO explanation
+    - NO markdown
+    - NO extra text
+
+  agent: prediction_modeler
