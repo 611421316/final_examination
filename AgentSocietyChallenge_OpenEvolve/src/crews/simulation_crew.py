@@ -34,7 +34,9 @@ from crewai.agents.agent_builder.base_agent import BaseAgent
 from crewai.tools import tool
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from typing import List
-from src.tools.exact_lookup_tools import lookup_user_by_id, lookup_item_by_id, lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool
+from src.tools.exact_lookup_tools import lookup_user_by_id, lookup_item_by_id, lookup_reviews_by_user_and_item, none_tool, lowercase_none_tool
+
+
 import os
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -201,7 +203,7 @@ class SimulationCrew():
     def user_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
-            tools=[lookup_user_by_id, none_tool, lowercase_none_tool],
+            tools=[lookup_user_by_id, user_rag_tool, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=10
@@ -211,7 +213,7 @@ class SimulationCrew():
     def item_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
-            tools=[lookup_item_by_id, none_tool, lowercase_none_tool],
+            tools=[lookup_item_by_id, item_rag_tool, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=10
@@ -221,7 +223,7 @@ class SimulationCrew():
     def review_analyst(self) -> Agent:
         return Agent(
             config=self.agents_config['review_analyst'], # type: ignore[index]
-            tools=[lookup_reviews_by_user_and_item, lookup_reviews_by_item, lookup_reviews_by_user, none_tool, lowercase_none_tool],
+            tools=[lookup_reviews_by_user_and_item, review_rag_tool, none_tool, lowercase_none_tool],
             verbose=True,
             llm=default_llm,
             max_rpm=10

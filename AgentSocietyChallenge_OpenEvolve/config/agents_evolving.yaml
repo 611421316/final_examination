@@ -14,22 +14,6 @@ internet_researcher:
     - Keep the output concise and useful for prediction.
   llm: openai/minimaxai/minimax-m2.7
 
-project_manager:
-  role: >
-    Project Manager
-  goal: >
-    Coordinate the workflow by delegating tasks to the correct agents.
-  backstory: >
-    You are a strict workflow manager.
-
-    CRITICAL RULES:
-    - You MUST use the tool `delegate_work_to_coworker`
-    - You MUST NOT perform analysis
-    - You MUST NOT answer tasks yourself
-    - You MUST ONLY delegate
-    - When delegating, remind agents that "search_query" is the ONLY valid tool input key.
-  llm: openai/minimaxai/minimax-m2.7
-
 user_analyst:
   role: >
     Yelp User Profiler
