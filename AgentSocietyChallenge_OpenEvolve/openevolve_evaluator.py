@@ -75,7 +75,7 @@ def _extract_section(content: str, section_name: str) -> str:
 def _unpack_bundle(bundle_path: str) -> tuple:
     """
     Parse the multi-file bundle and write three temp files.
-    Returns (agents_yaml_path, tasks_yaml_path, crew_config_json_path).
+    Returns (agents_yaml_path, tasks_yaml_path, crew_config_json_path, lookup_text, flow_text, interaction_text).
     All temp files are written with delete=False so the caller must clean them up.
     """
     with open(bundle_path, "r", encoding="utf-8") as f:
@@ -85,6 +85,21 @@ def _unpack_bundle(bundle_path: str) -> tuple:
     agents_text = _extract_section(content, "agents")
     tasks_text  = _extract_section(content, "tasks")
     crew_text   = _extract_section(content, "crew")
+
+    try:
+        lookup_text = _extract_section(content, "lookup")
+    except ValueError:
+        lookup_text = None
+
+    try:
+        flow_text = _extract_section(content, "flow")
+    except ValueError:
+        flow_text = None
+
+    try:
+        interaction_text = _extract_section(content, "interaction")
+    except ValueError:
+        interaction_text = None
 
     # ── Validate YAML sections ────────────────────────────────────────────
     try:
@@ -136,7 +151,7 @@ def _unpack_bundle(bundle_path: str) -> tuple:
     json.dump(crew_config or {}, crew_tmp)
     crew_tmp.close()
 
-    return agents_tmp.name, tasks_tmp.name, crew_tmp.name
+    return agents_tmp.name, tasks_tmp.name, crew_tmp.name, lookup_text, flow_text, interaction_text
 
 
 def evaluate(program_path: str) -> dict:
@@ -163,11 +178,12 @@ def evaluate(program_path: str) -> dict:
 
     # Temp file paths to clean up after evaluation
     _tmp_files = []
+    _orig_files = {}
 
     try:
         if _is_bundle(program_path):
             print(f"[Evaluator] Detected multi-file bundle: {program_path}")
-            agents_tmp, tasks_tmp, crew_tmp = _unpack_bundle(program_path)
+            agents_tmp, tasks_tmp, crew_tmp, lookup_text, flow_text, interaction_text = _unpack_bundle(program_path)
             _tmp_files.extend([agents_tmp, tasks_tmp, crew_tmp])
 
             # Set env vars so CrewAISimulationAgent / SimulationCrew pick them up
@@ -175,6 +191,31 @@ def evaluate(program_path: str) -> dict:
             os.environ["OPENEVOLVE_TASKS_YAML"]  = tasks_tmp
             os.environ["OPENEVOLVE_CREW_JSON"]   = crew_tmp
             print(f"[Evaluator] Bundle unpacked → agents={agents_tmp}, tasks={tasks_tmp}, crew={crew_tmp}")
+
+            if lookup_text:
+                lookup_path = os.path.join(project_dir, "src", "tools", "exact_lookup_tools.py")
+                with open(lookup_path, "r", encoding="utf-8") as f:
+                    _orig_files[lookup_path] = f.read()
+                with open(lookup_path, "w", encoding="utf-8") as f:
+                    f.write(lookup_text)
+                print(f"[Evaluator] Injected src/tools/exact_lookup_tools.py from bundle")
+
+            if flow_text:
+                flow_path = os.path.join(project_dir, "src", "flows", "serving_flow.py")
+                with open(flow_path, "r", encoding="utf-8") as f:
+                    _orig_files[flow_path] = f.read()
+                with open(flow_path, "w", encoding="utf-8") as f:
+                    f.write(flow_text)
+                print(f"[Evaluator] Injected src/flows/serving_flow.py from bundle")
+
+            if interaction_text:
+                interaction_path = os.path.join(project_dir, "src", "tools", "interaction_tool_wrapper.py")
+                with open(interaction_path, "r", encoding="utf-8") as f:
+                    _orig_files[interaction_path] = f.read()
+                with open(interaction_path, "w", encoding="utf-8") as f:
+                    f.write(interaction_text)
+                print(f"[Evaluator] Injected src/tools/interaction_tool_wrapper.py from bundle")
+
         else:
             # Legacy single-file mode (agents YAML only)
             os.environ["OPENEVOLVE_AGENTS_YAML"] = program_path
@@ -226,6 +267,14 @@ def evaluate(program_path: str) -> dict:
         return {"combined_score": 0.0}
 
     finally:
+        # Restore original source files
+        for path, content in _orig_files.items():
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except OSError:
+                pass
+
         # Clean up temp files created during bundle unpacking
         for tmp_path in _tmp_files:
             try:

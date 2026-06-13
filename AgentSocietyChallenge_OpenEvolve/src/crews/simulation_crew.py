@@ -3,6 +3,11 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Fix ratelimit issues for free APIs by configuring litellm to automatically retry
+os.environ["LITELLM_MAX_RETRIES"] = "10"
+os.environ["LITELLM_RETRY_ON_RATE_LIMIT"] = "True"
+
 load_dotenv()
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CHROMA_DIR = _PROJECT_ROOT / "lmdb_cache" / "my_chroma"
@@ -25,7 +30,9 @@ if llm_provider == "nvidia":
     default_llm = LLM(
         model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
         api_key=os.getenv("NVIDIA_API_KEY", ""),
-        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
+        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1"),
+        max_retries=10,
+        timeout=120
     )
 else:
     default_llm = LLM(model="ollama/phi3")
@@ -384,5 +391,6 @@ class SimulationCrew():
             embedder=rag_config["embedding_model"],
             memory=False,
             cache=False,
-            verbose=True
+            verbose=True,
+            max_rpm=cfg.get("crew_max_rpm", 3)
         )
