@@ -60,6 +60,31 @@ evolve-resume:  ## 從最新 checkpoint 繼續（指定 CHECKPOINT=path）
 	    --checkpoint $(CHECKPOINT) \
 	    --iterations $(ITERS)
 
+.PHONY: evolve-bundle
+evolve-bundle:  ## 啟動 multi-file bundle 進化（agents.yaml + tasks.yaml + simulation_crew.py）
+	OPENEVOLVE_NUM_TASKS=$(TASKS) \
+	uv run --env-file .env python -m openevolve.cli \
+	    config/evolve_bundle.py \
+	    openevolve_evaluator.py \
+	    --config config/openevolve_config.yaml \
+	    --output config/openevolve_output_bundle \
+	    --iterations $(ITERS)
+
+.PHONY: evolve-bundle-resume
+evolve-bundle-resume:  ## 從 bundle checkpoint 繼續（指定 CHECKPOINT=path）
+	@if [ -z "$(CHECKPOINT)" ]; then \
+	    echo "ERROR: 必須指定 CHECKPOINT 變數，例如：make evolve-bundle-resume CHECKPOINT=config/openevolve_output_bundle/checkpoints/checkpoint_10"; \
+	    exit 1; \
+	fi
+	OPENEVOLVE_NUM_TASKS=$(TASKS) \
+	uv run --env-file .env python -m openevolve.cli \
+	    config/evolve_bundle.py \
+	    openevolve_evaluator.py \
+	    --config config/openevolve_config.yaml \
+	    --output config/openevolve_output_bundle \
+	    --checkpoint $(CHECKPOINT) \
+	    --iterations $(ITERS)
+
 .PHONY: evolve-test
 evolve-test:  ## 本地整合測試 evaluator（不啟動進化）
 	uv run --env-file .env python openevolve_evaluator.py

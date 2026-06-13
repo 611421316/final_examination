@@ -1,8 +1,14 @@
 import json
+import os
 import re
+import sys
 from pydantic import BaseModel
 from crewai.flow.flow import Flow, listen, start
-from src.crews.simulation_crew import SimulationCrew
+# NOTE: SimulationCrew is imported lazily inside trigger_crew_inference() to
+# avoid the "super(type, obj)" class-identity error that occurs when
+# simulation_crew.py is imported under two different sys.modules keys.
+# Always importing it fresh (with stale-cache eviction) guarantees a single
+# canonical class object per process.
 
 
 def extract_json_from_output(raw_output: str) -> dict:
@@ -67,13 +73,34 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
             'user_id': self.state.user_id,
             'item_id': self.state.item_id
         }
-        
+
+        # ── Lazy import with stale-cache eviction ─────────────────────────
+        # Evict any previously cached module objects so that we always get
+        # ONE canonical SimulationCrew class, regardless of how many times
+        # this module or crewai_simulation_agent has been imported.
+        # Without this, Python's zero-argument super() cell captures a
+        # *different* class object than the one used to construct the instance,
+        # producing: "super(type, obj): obj is not an instance or subtype"
+        for _key in list(sys.modules.keys()):
+            if 'simulation_crew' in _key:
+                del sys.modules[_key]
+        from src.crews.simulation_crew import SimulationCrew  # noqa: PLC0415
+
         # 啟動並執行 Crew AI 團隊
+        # NOTE: SimulationCrew.__init__ reads OPENEVOLVE_AGENTS_YAML /
+        # OPENEVOLVE_TASKS_YAML from env at instantiation time, so the env vars
+        # set by openevolve_evaluator.py are automatically picked up here.
         crew_instance = SimulationCrew()
-        if self.agents_config_path:
+
+        # ── Override agents config via explicit arg (crewai_simulation_agent.py) ──
+        # Only apply when an explicit path is provided AND the file still exists
+        # (temp files created by OpenEvolve may be cleaned up before this runs).
+        if self.agents_config_path and os.path.exists(self.agents_config_path):
             import yaml
-            with open(self.agents_config_path, "r", encoding='utf-8') as f:
+            with open(self.agents_config_path, "r", encoding="utf-8") as f:
                 crew_instance.agents_config = yaml.safe_load(f)
+        elif self.agents_config_path:
+            print(f"[ServingFlow] Warning: agents_config_path not found: {self.agents_config_path!r}, using env/default.")
 
         result = crew_instance.crew().kickoff(inputs=inputs)
         

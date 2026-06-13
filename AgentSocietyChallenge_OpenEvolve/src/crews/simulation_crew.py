@@ -1,5 +1,6 @@
 from chromadb.config import Settings
 import os
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
@@ -182,60 +183,122 @@ schema_knowledge = StringKnowledgeSource(
 @CrewBase
 class SimulationCrew():
     """Yelp Recommendation Crew"""
-    agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')
-    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')
+    # Support OpenEvolve overrides via environment variables:
+    #   OPENEVOLVE_AGENTS_YAML → override agents config path
+    #   OPENEVOLVE_TASKS_YAML  → override tasks config path
+    #   OPENEVOLVE_CREW_JSON   → override crew structure (process, order, max_rpm)
+    #
+    # NOTE: These are set in __init__ (not as class attributes) so that env vars
+    # are read at instantiation time, not at import/class-definition time.
+    # This is critical for OpenEvolve which sets env vars before each evaluate() call.
+    agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')  # default; overridden in __init__
+    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')   # default; overridden in __init__
     agents: List[BaseAgent]
     tasks: List[Task]
+
+    def __init__(self, *args, **kwargs):
+        # Read env vars HERE (at instantiation), not at class definition time.
+        # This ensures OpenEvolve's env var changes take effect for each evaluate() call.
+        agents_env = os.environ.get("OPENEVOLVE_AGENTS_YAML", "")
+        tasks_env  = os.environ.get("OPENEVOLVE_TASKS_YAML", "")
+
+        if agents_env and os.path.exists(agents_env):
+            self.__class__.agents_config = agents_env
+        else:
+            if agents_env:
+                print(f"[SimulationCrew] Warning: OPENEVOLVE_AGENTS_YAML path not found: {agents_env!r}, using default.")
+            self.__class__.agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')
+
+        if tasks_env and os.path.exists(tasks_env):
+            self.__class__.tasks_config = tasks_env
+        else:
+            if tasks_env:
+                print(f"[SimulationCrew] Warning: OPENEVOLVE_TASKS_YAML path not found: {tasks_env!r}, using default.")
+            self.__class__.tasks_config = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')
+
+        # Use explicit super(SimulationCrew, self) instead of zero-argument super().
+        # Reason: @CrewBase uses _CrewBaseType.__call__ which creates a BRAND NEW class
+        # via CrewBaseMeta(name, bases, dict). The original __classcell__ is consumed
+        # during the first (pre-decoration) class creation, so __class__ in the __init__
+        # closure still refers to the OLD pre-decoration class object.
+        # zero-arg super() checks isinstance(self, __class__) which fails because self
+        # is an instance of the NEW decorated class.
+        # super(SimulationCrew, self) looks up the global NAME at call-time → decorated class → OK.
+        super(SimulationCrew, self).__init__(*args, **kwargs)
+
+    def _crew_cfg(self) -> dict:
+        """Load OPENEVOLVE_CREW_JSON if set, else return empty dict (use defaults)."""
+        crew_json = os.environ.get("OPENEVOLVE_CREW_JSON", "")
+        if crew_json and os.path.exists(crew_json):
+            try:
+                with open(crew_json, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"[SimulationCrew] Warning: could not load OPENEVOLVE_CREW_JSON: {e}")
+        return {}
+
+    def _agent_setting(self, cfg: dict, agent_name: str, key: str, default):
+        """Get per-agent setting from crew config, falling back to default."""
+        return (
+            cfg.get("agent_settings", {})
+               .get(agent_name, {})
+               .get(key, default)
+        )
 
     # === Step 6: System Assembly & Tool Binding ===
     # Mount specific RAG Tools onto specific Agents
     @agent
     def internet_researcher(self) -> Agent:
+        cfg = self._crew_cfg()
         return Agent(
             config=self.agents_config['internet_researcher'],
             tools=[serper_tool],
-            verbose=True,
+            verbose=self._agent_setting(cfg, 'internet_researcher', 'verbose', True),
             llm=default_llm,
-            max_rpm=15
+            max_rpm=self._agent_setting(cfg, 'internet_researcher', 'max_rpm', 15)
         )
 
     @agent
     def user_analyst(self) -> Agent:
+        cfg = self._crew_cfg()
         return Agent(
             config=self.agents_config['user_analyst'], # type: ignore[index]
             tools=[lookup_user_by_id, user_rag_tool, none_tool, lowercase_none_tool],
-            verbose=True,
+            verbose=self._agent_setting(cfg, 'user_analyst', 'verbose', True),
             llm=default_llm,
-            max_rpm=10
+            max_rpm=self._agent_setting(cfg, 'user_analyst', 'max_rpm', 10)
         )
 
     @agent
     def item_analyst(self) -> Agent:
+        cfg = self._crew_cfg()
         return Agent(
             config=self.agents_config['item_analyst'], # type: ignore[index]
             tools=[lookup_item_by_id, item_rag_tool, none_tool, lowercase_none_tool],
-            verbose=True,
+            verbose=self._agent_setting(cfg, 'item_analyst', 'verbose', True),
             llm=default_llm,
-            max_rpm=10
+            max_rpm=self._agent_setting(cfg, 'item_analyst', 'max_rpm', 10)
         )
 
     @agent
     def review_analyst(self) -> Agent:
+        cfg = self._crew_cfg()
         return Agent(
             config=self.agents_config['review_analyst'], # type: ignore[index]
             tools=[lookup_reviews_by_user_and_item, review_rag_tool, none_tool, lowercase_none_tool],
-            verbose=True,
+            verbose=self._agent_setting(cfg, 'review_analyst', 'verbose', True),
             llm=default_llm,
-            max_rpm=10
+            max_rpm=self._agent_setting(cfg, 'review_analyst', 'max_rpm', 10)
         )
 
     @agent
     def prediction_modeler(self) -> Agent:
+        cfg = self._crew_cfg()
         return Agent(
             config=self.agents_config['prediction_modeler'], # type: ignore[index]
-            verbose=True,
+            verbose=self._agent_setting(cfg, 'prediction_modeler', 'verbose', True),
             llm=default_llm,
-            max_rpm=10
+            max_rpm=self._agent_setting(cfg, 'prediction_modeler', 'max_rpm', 10)
         )
 
     @task
@@ -272,22 +335,46 @@ class SimulationCrew():
 
     @crew
     def crew(self) -> Crew:
+        cfg = self._crew_cfg()
+
+        # ── Agent list (order evolvable via OPENEVOLVE_CREW_JSON) ──────────
+        _agent_map = {
+            "user_analyst":       self.user_analyst(),
+            "item_analyst":       self.item_analyst(),
+            "review_analyst":     self.review_analyst(),
+            "internet_researcher": self.internet_researcher(),
+            "prediction_modeler": self.prediction_modeler(),
+        }
+        agents_order = cfg.get("agents_order", list(_agent_map.keys()))
+        # Only include agents that exist in the map; ignore unknown names
+        agents_list = [_agent_map[a] for a in agents_order if a in _agent_map]
+        # Append any missing agents at the end (safety)
+        for name, obj in _agent_map.items():
+            if name not in agents_order:
+                agents_list.append(obj)
+
+        # ── Task list (order evolvable via OPENEVOLVE_CREW_JSON) ───────────
+        _task_map = {
+            "analyze_user_task":       self.analyze_user_task(),
+            "analyze_item_task":       self.analyze_item_task(),
+            "internet_researcher_task": self.internet_researcher_task(),
+            "analyze_reviews_task":    self.analyze_reviews_task(),
+            "predict_review_task":     self.predict_review_task(),
+        }
+        tasks_order = cfg.get("tasks_order", list(_task_map.keys()))
+        tasks_list = [_task_map[t] for t in tasks_order if t in _task_map]
+        for name, obj in _task_map.items():
+            if name not in tasks_order:
+                tasks_list.append(obj)
+
+        # ── Process strategy ───────────────────────────────────────────────
+        process_str = cfg.get("process", "sequential")
+        process = Process.hierarchical if process_str == "hierarchical" else Process.sequential
+
         return Crew(
-            agents=[
-                self.user_analyst(),
-                self.item_analyst(),
-                self.review_analyst(),
-                self.internet_researcher(),
-                self.prediction_modeler(),
-            ],
-            tasks=[
-                self.analyze_user_task(),
-                self.analyze_item_task(),
-                self.internet_researcher_task(),
-                self.analyze_reviews_task(),
-                self.predict_review_task(),
-        ],
-            process=Process.sequential,
+            agents=agents_list,
+            tasks=tasks_list,
+            process=process,
             knowledge_sources=[schema_knowledge],
             embedder=rag_config["embedding_model"],
             verbose=True

@@ -17,47 +17,69 @@ random_seed: 42
 # (diff-based mode generates SEARCH/REPLACE patches that easily corrupt YAML structure)
 diff_based_evolution: false
 language: "text"
-max_code_length: 11000
+max_code_length: 20000
 
-# ── LLM ───────────────────────────────────────────────────────────────────────
+# ── LLM ────────────────────────────────────────────────────────────────────────────────
 llm:
   models:
-    - name: "minimaxai/minimax-m2.7"
+    # minimaxai/minimax-m2.7 was timing out on all 4 retries on NVIDIA NIM.
+    # Using meta/llama-3.1-8b-instruct (same endpoint) which is proven to work.
+    - name: "meta/llama-3.1-8b-instruct"
       weight: 1.0
   api_base: "https://integrate.api.nvidia.com/v1"
   api_key: null          # reads from OPENAI_API_KEY env variable
   temperature: 0.7
   max_tokens: 4096
-  timeout: 120
-  retries: 3           # 改回保守值；過多 retry 會放大整體 wall time 而不一定提高成功率
-  retry_delay: 30      # 配合 NVIDIA NIM rate limit window，給合理的等待時間
+  timeout: 180           # increased from 120 — llama-3.1 is slower but reliable
+  retries: 3           # 改回保守値；過多 retry 會放大整體 wall time 而不一定提高成功率
+  retry_delay: 10      # reduced from 30 — llama-3.1 doesn’t need long waits between retries
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 prompt:
   system_message: |
     You are an expert prompt engineer specializing in multi-agent AI systems.
-    You are evolving the configuration (role, goal, backstory) of three CrewAI agents
-    that simulate user behavior on a review platform:
+    You are evolving a multi-file bundle that configures a CrewAI simulation system.
+    The bundle contains THREE sections separated by '=== SECTION: <name> ===' markers:
 
-    1. data_retriever        – retrieves user profile, item details, user's historical reviews,
-                                and item's historical reviews via a fixed ReAct tool-calling protocol.
-                                Its task description (NOT shown here) hard-codes the exact 4 tool
-                                calls it must make.
-    2. psychological_analyst – analyses user preference and rating habits from retrieved data
-    3. behavior_simulator    – embodies the user persona and produces a star rating + review text
+    --- SECTION: agents ---
+    YAML configuration for 6 CrewAI agents:
+      - internet_researcher: searches for general rating behavior patterns
+      - user_analyst:        retrieves and analyses user profile statistics
+      - item_analyst:        retrieves and analyses business quality indicators
+      - review_analyst:      retrieves and analyses historical reviews
+      - prediction_modeler:  predicts star rating + generates review text
+      - reviewer:            quality-checks the prediction output
 
-    Your goal is to rewrite the EVOLVE-BLOCK section so that the agents produce
-    star ratings closer to the user's actual historical average and reviews that
-    match the user's typical tone and sentiment.
+    --- SECTION: tasks ---
+    YAML configuration for 5 CrewAI tasks:
+      - internet_research_task, analyze_user_task, analyze_item_task,
+        analyze_reviews_task, predict_review_task
 
-    Rules:
-    - Keep the YAML structure valid. Do NOT change the `llm:` field of any agent.
-    - For data_retriever, you MAY evolve role/goal/backstory, but the backstory MUST
-      explicitly remind the agent to follow the tool-calling format from its task
-      description verbatim. Do NOT instruct it to skip queries or invent new ones.
-    - For psychological_analyst and behavior_simulator, freely evolve all three fields
-      to improve rating accuracy and review fidelity.
-    - Return the complete YAML file with EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
+    --- SECTION: crew ---
+    Python-style CREW_CONFIG dict controlling:
+      - agents_order: list of agent names (determines execution priority)
+      - tasks_order:  list of task names (determines execution order)
+      - process:      "sequential" or "hierarchical"
+      - agent_settings: per-agent max_rpm and verbose flag
+
+    YOUR GOAL: Rewrite the EVOLVE-BLOCK so that the system produces
+    star ratings closer to the user's actual historical average AND
+    review texts that authentically match the user's writing style.
+
+    STRICT RULES:
+    - Keep all three '=== SECTION: xxx ===' headers EXACTLY as-is.
+    - Keep EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
+    - Keep the docstring at the top of the bundle EXACTLY as-is.
+    - In [agents]: you MAY change role/goal/backstory freely.
+      Do NOT change any `llm:` field.
+    - In [tasks]: you MAY change description/expected_output.
+      Keep all `agent:` keys pointing to valid agent names.
+      Keep all tool Action names (lookup_user_by_id, lookup_item_by_id,
+      lookup_reviews_by_user_and_item, search_internet) unchanged.
+    - In [crew]: you MAY change CREW_CONFIG values ONLY:
+      agents_order, tasks_order, process, agent_settings (max_rpm, verbose).
+      Do NOT change anything else in this section.
+    - Return the COMPLETE file (all sections, no truncation).
   num_top_programs: 3
   num_diverse_programs: 2
   include_artifacts: false

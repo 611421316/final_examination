@@ -1,7 +1,9 @@
 import os
+import re
 import tempfile
 import sys
 import logging
+import yaml
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,24 +39,147 @@ def _get_simulator() -> Simulator:
     return _simulator
 
 
+# ---------------------------------------------------------------------------
+# Multi-file bundle helpers
+# ---------------------------------------------------------------------------
+
+def _is_bundle(program_path: str) -> bool:
+    """Return True if the program file is a multi-section evolve bundle."""
+    try:
+        with open(program_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return ("=== SECTION: agents ===" in content and
+                "=== SECTION: tasks ===" in content and
+                "=== SECTION: crew ===" in content)
+    except Exception:
+        return False
+
+
+def _extract_section(content: str, section_name: str) -> str:
+    """
+    Extract text between '=== SECTION: <name> ===' and the next '=== SECTION:' or end of EVOLVE block.
+    Returns the extracted text stripped of leading/trailing whitespace.
+    """
+    # Match from the section header to the next section header or EVOLVE-BLOCK-END
+    pattern = (
+        r"# === SECTION: " + re.escape(section_name) + r" ===\n"
+        r"(.*?)"
+        r"(?=# === SECTION:|# EVOLVE-BLOCK-END|\Z)"
+    )
+    match = re.search(pattern, content, re.DOTALL)
+    if not match:
+        raise ValueError(f"Section '{section_name}' not found in bundle.")
+    return match.group(1).strip()
+
+
+def _unpack_bundle(bundle_path: str) -> tuple:
+    """
+    Parse the multi-file bundle and write three temp files.
+    Returns (agents_yaml_path, tasks_yaml_path, crew_config_json_path).
+    All temp files are written with delete=False so the caller must clean them up.
+    """
+    with open(bundle_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # ── Extract sections ──────────────────────────────────────────────────
+    agents_text = _extract_section(content, "agents")
+    tasks_text  = _extract_section(content, "tasks")
+    crew_text   = _extract_section(content, "crew")
+
+    # ── Validate YAML sections ────────────────────────────────────────────
+    try:
+        yaml.safe_load(agents_text)
+    except yaml.YAMLError as e:
+        raise ValueError(f"[Bundle] agents section is not valid YAML: {e}")
+
+    try:
+        yaml.safe_load(tasks_text)
+    except yaml.YAMLError as e:
+        raise ValueError(f"[Bundle] tasks section is not valid YAML: {e}")
+
+    # ── Extract CREW_CONFIG dict from crew section ────────────────────────
+    # We allow the crew section to be either valid YAML or a Python-style
+    # CREW_CONFIG = {...} literal. We try both.
+    crew_config = None
+    # Try Python literal eval of the CREW_CONFIG assignment
+    crew_match = re.search(r"CREW_CONFIG\s*=\s*(\{.*?\})\s*$", crew_text, re.DOTALL | re.MULTILINE)
+    if crew_match:
+        import ast
+        try:
+            crew_config = ast.literal_eval(crew_match.group(1))
+        except Exception:
+            crew_config = None
+    # Fallback: try YAML
+    if crew_config is None:
+        try:
+            crew_config = yaml.safe_load(crew_text)
+        except Exception:
+            crew_config = None
+
+    # ── Write temp files ──────────────────────────────────────────────────
+    agents_tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+    )
+    agents_tmp.write(agents_text)
+    agents_tmp.close()
+
+    tasks_tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+    )
+    tasks_tmp.write(tasks_text)
+    tasks_tmp.close()
+
+    import json
+    crew_tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, encoding="utf-8"
+    )
+    json.dump(crew_config or {}, crew_tmp)
+    crew_tmp.close()
+
+    return agents_tmp.name, tasks_tmp.name, crew_tmp.name
+
+
 def evaluate(program_path: str) -> dict:
     """
     Module-level function required by OpenEvolve.
 
-    OpenEvolve writes the mutated YAML to a temp file (suffix configured as
-    .yaml) and passes the FILE PATH here as the sole argument.
+    Supports two modes:
+      1. Single-file mode (legacy): program_path points to an agents YAML file.
+         Behaves exactly as before.
+      2. Multi-file bundle mode: program_path points to a evolve_bundle.py file
+         containing === SECTION: agents ===, === SECTION: tasks ===, and
+         === SECTION: crew === blocks.
+         The evaluator unpacks the bundle into temp files and sets the
+         appropriate env vars before running the simulation.
 
     Returns a dict with 'combined_score' as the primary fitness metric (required
     by OpenEvolve), plus individual sub-metrics for MAP-Elites feature tracking.
 
-    combined_score = overall_quality (0–1):
+    combined_score = overall_quality (0-1):
       overall_quality = (preference_estimation + review_generation) / 2
     where preference_estimation = 1 - normalized_star_MAE.
     """
     simulator = _get_simulator()
+
+    # Temp file paths to clean up after evaluation
+    _tmp_files = []
+
     try:
-        # 1. Tell CrewAISimulationAgent to load this YAML config for the run
-        os.environ["OPENEVOLVE_AGENTS_YAML"] = program_path
+        if _is_bundle(program_path):
+            print(f"[Evaluator] Detected multi-file bundle: {program_path}")
+            agents_tmp, tasks_tmp, crew_tmp = _unpack_bundle(program_path)
+            _tmp_files.extend([agents_tmp, tasks_tmp, crew_tmp])
+
+            # Set env vars so CrewAISimulationAgent / SimulationCrew pick them up
+            os.environ["OPENEVOLVE_AGENTS_YAML"] = agents_tmp
+            os.environ["OPENEVOLVE_TASKS_YAML"]  = tasks_tmp
+            os.environ["OPENEVOLVE_CREW_JSON"]   = crew_tmp
+            print(f"[Evaluator] Bundle unpacked → agents={agents_tmp}, tasks={tasks_tmp}, crew={crew_tmp}")
+        else:
+            # Legacy single-file mode (agents YAML only)
+            os.environ["OPENEVOLVE_AGENTS_YAML"] = program_path
+            os.environ.pop("OPENEVOLVE_TASKS_YAML", None)
+            os.environ.pop("OPENEVOLVE_CREW_JSON", None)
 
         num_tasks = int(os.environ.get("OPENEVOLVE_NUM_TASKS", 5))
         print(f"\n[Evaluator] Running simulation: {program_path}  (tasks={num_tasks}, timeout={SIM_TIMEOUT_SEC}s)")
@@ -100,20 +225,33 @@ def evaluate(program_path: str) -> dict:
         traceback.print_exc()
         return {"combined_score": 0.0}
 
+    finally:
+        # Clean up temp files created during bundle unpacking
+        for tmp_path in _tmp_files:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
 
 if __name__ == "__main__":
-    # Lightweight integration test — write initial YAML to a temp file,
-    # then call evaluate() exactly as OpenEvolve would.
-    import tempfile
-    yaml_path = os.path.join(project_dir, "config", "agents_evolving.yaml")
-    if os.path.exists(yaml_path):
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False, encoding='utf-8') as tmp:
-            tmp.write(content)
-            tmp_path = tmp.name
-        try:
-            fitness = evaluate(tmp_path)
-            print(f"Test execution completed with evaluated fitness score: {fitness}")
-        finally:
-            os.remove(tmp_path)
+    # Lightweight integration test — supports both bundle and legacy YAML mode.
+    import sys
+
+    # Default: use bundle if it exists, else fall back to agents_evolving.yaml
+    bundle_path = os.path.join(project_dir, "config", "evolve_bundle.py")
+    legacy_path = os.path.join(project_dir, "config", "agents_evolving.yaml")
+
+    if len(sys.argv) > 1:
+        test_path = sys.argv[1]
+    elif os.path.exists(bundle_path):
+        test_path = bundle_path
+    else:
+        test_path = legacy_path
+
+    if os.path.exists(test_path):
+        print(f"[Test] Running evaluate() with: {test_path}")
+        fitness = evaluate(test_path)
+        print(f"Test execution completed with evaluated fitness score: {fitness}")
+    else:
+        print(f"[Test] File not found: {test_path}")
