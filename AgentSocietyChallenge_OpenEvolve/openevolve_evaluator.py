@@ -217,10 +217,9 @@ def evaluate(program_path: str) -> dict:
                 print(f"[Evaluator] Injected src/tools/interaction_tool_wrapper.py from bundle")
 
         else:
-            # Legacy single-file mode (agents YAML only)
-            os.environ["OPENEVOLVE_AGENTS_YAML"] = program_path
-            os.environ.pop("OPENEVOLVE_TASKS_YAML", None)
-            os.environ.pop("OPENEVOLVE_CREW_JSON", None)
+            print(f"[Evaluator] ERROR: Program is not a valid multi-file bundle: {program_path}")
+            # If the LLM generated gibberish (e.g. just '# Current Program'), return 0 immediately.
+            return {"combined_score": 0.0}
 
         num_tasks = int(os.environ.get("OPENEVOLVE_NUM_TASKS", 5))
         print(f"\n[Evaluator] Running simulation: {program_path}  (tasks={num_tasks}, timeout={SIM_TIMEOUT_SEC}s)")

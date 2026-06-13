@@ -87,7 +87,21 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
         elif self.agents_config_path:
             print(f"[ServingFlow] Warning: agents_config_path not found: {self.agents_config_path!r}, using env/default.")
 
-        result = crew_instance.crew().kickoff(inputs=inputs)
+        import time
+        max_flow_retries = 3
+        result = None
+        for attempt in range(max_flow_retries):
+            try:
+                result = crew_instance.crew().kickoff(inputs=inputs)
+                break
+            except Exception as e:
+                err_str = str(e).lower()
+                if "ratelimit" in err_str or "429" in err_str or "too many requests" in err_str:
+                    if attempt < max_flow_retries - 1:
+                        print(f"[ServingFlow] Rate limit hit. Waiting 30s before retry (Attempt {attempt+1}/{max_flow_retries})...")
+                        time.sleep(30)
+                        continue
+                raise e
         
         # 使用多層 Regex 容錯解析 LLM 的回傳結果
         try:
