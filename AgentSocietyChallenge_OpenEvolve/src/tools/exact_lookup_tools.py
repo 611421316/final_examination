@@ -41,10 +41,25 @@ _embedder = None
 def _get_client():
     global _client
     if _client is None:
-        _client = chromadb.PersistentClient(
-            path=_CHROMA_DIR,
-            settings=Settings(anonymized_telemetry=False),
-        )
+        # Use allow_reset=True and omit anonymized_telemetry to match
+        # whatever settings CrewAI's JSONSearchTool uses internally.
+        # ChromaDB enforces a process-level singleton per path, so both
+        # this code and CrewAI's internal client MUST use identical Settings.
+        # The safest approach: rely on chromadb's module-level singleton cache
+        # by letting it detect the already-open client for this path.
+        try:
+            # Try to get already-open client (avoids "different settings" conflict)
+            import chromadb.api.client as _chroma_client_module
+            existing = getattr(_chroma_client_module, '_instances', {}).get(_CHROMA_DIR)
+            if existing is not None:
+                _client = existing
+            else:
+                raise AttributeError
+        except (AttributeError, Exception):
+            _client = chromadb.PersistentClient(
+                path=_CHROMA_DIR,
+                settings=Settings(anonymized_telemetry=False, allow_reset=True),
+            )
     return _client
 
 

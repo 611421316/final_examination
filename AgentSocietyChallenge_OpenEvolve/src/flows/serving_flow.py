@@ -1,14 +1,9 @@
 import json
 import os
 import re
-import sys
 from pydantic import BaseModel
 from crewai.flow.flow import Flow, listen, start
-# NOTE: SimulationCrew is imported lazily inside trigger_crew_inference() to
-# avoid the "super(type, obj)" class-identity error that occurs when
-# simulation_crew.py is imported under two different sys.modules keys.
-# Always importing it fresh (with stale-cache eviction) guarantees a single
-# canonical class object per process.
+from src.crews.simulation_crew import SimulationCrew
 
 
 def extract_json_from_output(raw_output: str) -> dict:
@@ -74,22 +69,12 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
             'item_id': self.state.item_id
         }
 
-        # ── Lazy import with stale-cache eviction ─────────────────────────
-        # Evict any previously cached module objects so that we always get
-        # ONE canonical SimulationCrew class, regardless of how many times
-        # this module or crewai_simulation_agent has been imported.
-        # Without this, Python's zero-argument super() cell captures a
-        # *different* class object than the one used to construct the instance,
-        # producing: "super(type, obj): obj is not an instance or subtype"
-        for _key in list(sys.modules.keys()):
-            if 'simulation_crew' in _key:
-                del sys.modules[_key]
-        from src.crews.simulation_crew import SimulationCrew  # noqa: PLC0415
-
         # 啟動並執行 Crew AI 團隊
         # NOTE: SimulationCrew.__init__ reads OPENEVOLVE_AGENTS_YAML /
         # OPENEVOLVE_TASKS_YAML from env at instantiation time, so the env vars
         # set by openevolve_evaluator.py are automatically picked up here.
+        # The super() fix uses super(SimulationCrew, self) in simulation_crew.py
+        # so no module eviction is needed here.
         crew_instance = SimulationCrew()
 
         # ── Override agents config via explicit arg (crewai_simulation_agent.py) ──

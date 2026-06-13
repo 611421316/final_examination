@@ -42,7 +42,7 @@ internet_researcher:
     - Focus on general psychological and behavioral patterns, NOT specific data about given users or businesses
     - Provide actionable insights that help predict rating tendencies
     - Keep your output concise and directly applicable to prediction tasks
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 user_analyst:
   role: >
@@ -59,7 +59,7 @@ user_analyst:
     - Estimate rating consistency: users with low variance tend to be more predictable
     - Determine engagement level: ratio of total votes to review_count indicates review quality/engagement
     - Analyze elite status or verified badges which correlate with review consistency
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 item_analyst:
   role: >
@@ -76,7 +76,7 @@ item_analyst:
     - Identify if business is trending: recent reviews may differ from historical average
     - Price tier correlation: higher priced businesses tend to receive more critical ratings
     - Category-specific expectations: fast food vs fine dining have different baseline expectations
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 review_analyst:
   role: >
@@ -95,7 +95,7 @@ review_analyst:
     - Note structural patterns: does user use lists, narrative, bullet points?
     - Track tone consistency: enthusiastic, neutral, critical, or mixed
     - Identify first-person usage frequency ("I", "my", "me")
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 prediction_modeler:
   role: >
@@ -130,7 +130,7 @@ prediction_modeler:
     - Preserve user's typical sentence structure and tone
     - Match sentiment intensity to user's rating tendency (harsh raters use stronger criticism)
     - Maintain first-person narrative ratio observed in user's reviews
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 reviewer:
   role: >
@@ -151,7 +151,7 @@ reviewer:
     - Identify which dimension failed
     - Provide specific adjustment recommendation
     - Suggest whether prediction needs re-generation with different parameters
-  llm: openai/minimaxai/minimax-m2.7
+  llm: openai/meta/llama-3.1-8b-instruct
 
 
 # === SECTION: tasks ===
@@ -186,20 +186,16 @@ analyze_user_task:
   description: >
     Analyze user {user_id} using available tools.
 
-    STEP 1 - Get user profile (REQUIRED, do this FIRST):
-    Action: lookup_user_by_id
-    Action Input: {{"user_id": "{user_id}"}}
-
-    STEP 2 - Analyze the retrieved data:
+    You MUST call the lookup_user_by_id tool with user_id "{user_id}" to retrieve the user profile.
+    After getting the result, analyze the retrieved data:
     - Identify EXACT average rating (from average_stars field). This is critical.
     - Identify review_count and yelping_since.
-    - Identify top 3 common compliments (what the user likes) and top 3 complaints (what the user hates) based on historical behavior or general profile metrics.
+    - Identify top 3 compliments (what other users appreciate) and key behavioral traits.
 
     STRICT RULES:
     - If the user profile is not found (returns "No user found"), assume default averages: average rating of 3.8 stars, neutral preferences, yelping since 2018, and flag the profile as "Default/New User".
     - You MUST call tools ONE AT A TIME
     - MUST use tool outputs — do NOT invent data
-    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
 
   expected_output: >
     A structured markdown report including:
@@ -216,11 +212,8 @@ analyze_item_task:
   description: >
     Analyze business {item_id} using available tools.
 
-    STEP 1 - Get business profile (REQUIRED, do this FIRST):
-    Action: lookup_item_by_id
-    Action Input: {{"item_id": "{item_id}"}}
-
-    STEP 2 - Analyze the retrieved data:
+    You MUST call the lookup_item_by_id tool with item_id "{item_id}" to retrieve the business profile.
+    After getting the result, analyze the data:
     - Identify EXACT star rating (from stars field) and review_count. This is critical.
     - Identify categories (e.g. restaurant type).
     - Identify top strengths (what people praise) and top weaknesses (what people complain about) based on attributes and hours.
@@ -229,7 +222,6 @@ analyze_item_task:
     - If the business profile is not found (returns "No item found"), utilize the internet research data (from internet_research_task) to reconstruct the restaurant categories and characteristics. If internet research is also empty, assume a standard mid-range restaurant profile.
     - You MUST call tools ONE AT A TIME
     - MUST use tool outputs — do NOT invent data
-    - NEVER return a list of JSON objects in Action Input. Only ONE dictionary.
 
   expected_output: >
     A structured markdown report including:
@@ -246,17 +238,19 @@ analyze_reviews_task:
   description: >
     Retrieve and analyze historical reviews for user {user_id} and business {item_id}.
 
-    STEP 1 - Retrieve reviews (REQUIRED):
-    Action: lookup_reviews_by_user_and_item
-    Action Input: {{"user_id": "{user_id}", "item_id": "{item_id}"}}
+    You MUST call the lookup_reviews_by_user_and_item tool.
+    Pass BOTH user_id "{user_id}" AND item_id "{item_id}" as separate string fields.
+    Example: call with user_id="{user_id}" and item_id="{item_id}".
 
-    STEP 2 - Analyze:
+    After retrieving reviews, analyze them:
     - Highlight if a direct past review exists between the user and the business.
-    - Otherwise, analyze the user's typical ratings/sentiments and the business's common feedback.
+    - If reviews are found, extract the user's typical rating, tone, and key phrases.
+    - If no direct reviews are found, analyze the user's general patterns and business's common feedback.
 
     STRICT RULES:
-    - You MUST call tools ONE AT A TIME.
-    - If no reviews are found, perform cross-feature matching based on restaurant categories (from analyze_item_task) and user averages (from analyze_user_task).
+    - You MUST call the lookup_reviews_by_user_and_item tool before concluding.
+    - Do NOT skip the tool call and jump straight to Final Answer.
+    - If no reviews are found after calling the tool, perform cross-feature matching based on restaurant categories and user averages.
 
   expected_output: >
     A structured markdown report highlighting:
