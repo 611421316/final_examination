@@ -196,7 +196,7 @@ class SimulationCrew():
             tools=[serper_tool],
             verbose=True,
             llm=default_llm,
-            max_rpm=10
+            max_rpm=15
         )
 
     @agent
