@@ -304,7 +304,8 @@ class SimulationCrew():
     @task
     def analyze_user_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_user_task'], # type: ignore[index]
+            config=self.tasks_config['analyze_user_task'],  # type: ignore[index]
+            cache=False,
         )
 
     @task
@@ -312,25 +313,29 @@ class SimulationCrew():
         return Task(
             config=self.tasks_config['internet_research_task'],
             agent=self.internet_researcher(),
+            cache=False,
         )
 
     @task
     def analyze_item_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_item_task'], 
+            config=self.tasks_config['analyze_item_task'],
+            cache=False,
         )
 
     @task
     def analyze_reviews_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_reviews_task'], 
+            config=self.tasks_config['analyze_reviews_task'],
+            cache=False,
         )
 
     @task
     def predict_review_task(self) -> Task:
         return Task(
-            config=self.tasks_config['predict_review_task'], # type: ignore[index]
-            output_file='report.json'
+            config=self.tasks_config['predict_review_task'],  # type: ignore[index]
+            output_file='report.json',
+            cache=False,
         )
 
     @crew
@@ -377,5 +382,7 @@ class SimulationCrew():
             process=process,
             knowledge_sources=[schema_knowledge],
             embedder=rag_config["embedding_model"],
+            memory=False,
+            cache=False,
             verbose=True
         )
