@@ -312,25 +312,25 @@ predict_review_task:
 
 CREW_CONFIG = {
     "agents_order": [
-        "user_analyst",
         "item_analyst",
         "review_analyst",
+        "user_analyst",
         "internet_researcher",
         "prediction_modeler",
     ],
     "tasks_order": [
-        "analyze_user_task",
         "analyze_item_task",
-        "internet_researcher_task",
         "analyze_reviews_task",
+        "analyze_user_task",
+        "internet_researcher_task",
         "predict_review_task",
     ],
     "process": "sequential",
     "agent_settings": {
-        "internet_researcher": {"max_rpm": 15, "verbose": True},
+        "item_analyst":        {"max_rpm": 15, "verbose": True},
+        "review_analyst":      {"max_rpm": 12, "verbose": True},
         "user_analyst":        {"max_rpm": 10, "verbose": True},
-        "item_analyst":        {"max_rpm": 10, "verbose": True},
-        "review_analyst":      {"max_rpm": 10, "verbose": True},
+        "internet_researcher": {"max_rpm": 8,  "verbose": False},
         "prediction_modeler":  {"max_rpm": 10, "verbose": True},
     }
 }
