@@ -153,7 +153,6 @@ reviewer:
     - Suggest whether prediction needs re-generation with different parameters
   llm: openai/meta/llama-3.1-8b-instruct
 
-
 # === SECTION: tasks ===
 internet_research_task:
   description: >
@@ -300,7 +299,6 @@ predict_review_task:
 
   agent: prediction_modeler
 
-
 # === SECTION: crew ===
 # CREW CONFIGURATION — Only the following parts are evolvable:
 #   - agents list order inside crew()
@@ -335,8 +333,6 @@ CREW_CONFIG = {
         "prediction_modeler":  {"max_rpm": 2, "verbose": True},
     }
 }
-
-
 
 # === SECTION: lookup ===
 """

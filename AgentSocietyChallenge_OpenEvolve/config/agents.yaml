@@ -1,4 +1,3 @@
-# EVOLVE-BLOCK-START
 internet_researcher:
   role: >
     Restaurant Review Behavior Researcher
@@ -122,4 +121,3 @@ reviewer:
     - Provide specific adjustment recommendation
     - Suggest whether prediction needs re-generation with different parameters
   llm: openai/meta/llama-3.1-8b-instruct
-# EVOLVE-BLOCK-END

@@ -1,5 +1,3 @@
-# === Step 5: Strictly Separated Task Definitions ===
-
 internet_research_task:
   description: >
     Provide general insights about restaurant reviews and rating behavior using internet search if available.
@@ -27,9 +25,6 @@ internet_research_task:
   agent: internet_researcher
 
 
-# =========================
-# USER ANALYSIS
-# =========================
 analyze_user_task:
   description: >
     Analyze user {user_id} using available tools.
@@ -56,9 +51,6 @@ analyze_user_task:
   agent: user_analyst
 
 
-# =========================
-# ITEM ANALYSIS
-# =========================
 analyze_item_task:
   description: >
     Analyze business {item_id} using available tools.
@@ -85,9 +77,6 @@ analyze_item_task:
   agent: item_analyst
 
 
-# =========================
-# REVIEW ANALYSIS
-# =========================
 analyze_reviews_task:
   description: >
     Retrieve and analyze historical reviews for user {user_id} and business {item_id}.
@@ -116,9 +105,6 @@ analyze_reviews_task:
   agent: review_analyst
 
 
-# =========================
-# FINAL PREDICTION
-# =========================
 predict_review_task:
   description: >
     Predict the rating and generate a review based on:
