@@ -27,30 +27,82 @@ class SimulationCrew():
     tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')
 
     @agent
-    def behavior_reasoning_agent(self) -> Agent:
+    def user_analyst(self):
         return Agent(
-            config=self.agents_config['behavior_reasoning_agent'],
+            config=self.agents_config["user_analyst"],
             verbose=True,
-            llm=default_llm,
-            max_rpm=15
+            llm=default_llm
+        )
+
+    @agent
+    def item_analyst(self):
+        return Agent(
+            config=self.agents_config["item_analyst"],
+            verbose=True,
+            llm=default_llm
+        )
+
+    @agent
+    def prediction_modeler(self):
+        return Agent(
+            config=self.agents_config["prediction_modeler"],
+            verbose=True,
+            llm=default_llm
         )
 
     @task
-    def predict_review_task(self) -> Task:
+    def analyze_user_task(self):
+        cfg = dict(self.tasks_config["analyze_user_task"])
+        cfg.pop("agent", None)
+
         return Task(
-            config=self.tasks_config['predict_review_task'],
-            output_file='report.json'
+            config=cfg,
+            agent=self.user_analyst()
+        )
+
+
+    @task
+    def analyze_item_task(self):
+        cfg = dict(self.tasks_config["analyze_item_task"])
+        cfg.pop("agent", None)
+
+        return Task(
+            config=cfg,
+            agent=self.item_analyst()
+        )
+
+
+    @task
+    def predict_review_task(self):
+        cfg = dict(self.tasks_config["predict_review_task"])
+        cfg.pop("agent", None)
+
+        return Task(
+            config=cfg,
+            agent=self.prediction_modeler(),
+            context=[
+                self.analyze_user_task(),
+                self.analyze_item_task()
+            ],
+            output_file="report.json"
         )
 
     @crew
-    def crew(self) -> Crew:
+    def crew(self):
+
         return Crew(
             agents=[
-                self.behavior_reasoning_agent(),
+                self.user_analyst(),
+                self.item_analyst(),
+                self.prediction_modeler()
             ],
+
             tasks=[
-                self.predict_review_task(),
+                self.analyze_user_task(),
+                self.analyze_item_task(),
+                self.predict_review_task()
             ],
+
             process=Process.sequential,
             verbose=True
         )

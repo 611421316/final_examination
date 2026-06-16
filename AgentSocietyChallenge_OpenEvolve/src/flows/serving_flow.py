@@ -49,6 +49,11 @@ def fetch_user_data(user_id: str) -> Optional[Dict[str, Any]]:
         if _GLOBAL_INTERACTION_TOOL is not None:
             user_info = _GLOBAL_INTERACTION_TOOL.get_user(user_id=user_id)
             if user_info:
+                if isinstance(user_info, str):
+                    try:
+                        return json.loads(user_info)
+                    except json.JSONDecodeError:
+                        return None
                 return user_info
     except Exception:
         pass
@@ -70,6 +75,11 @@ def fetch_item_data(item_id: str) -> Optional[Dict[str, Any]]:
         if _GLOBAL_INTERACTION_TOOL is not None:
             item_info = _GLOBAL_INTERACTION_TOOL.get_item(item_id=item_id)
             if item_info:
+                if isinstance(item_info, str):
+                    try:
+                        return json.loads(item_info)
+                    except json.JSONDecodeError:
+                        return None
                 return item_info
     except Exception:
         pass
@@ -90,9 +100,15 @@ def fetch_review_data(user_id: str, item_id: str) -> Optional[Dict[str, Any]]:
         if _GLOBAL_INTERACTION_TOOL is not None:
             user_reviews = _GLOBAL_INTERACTION_TOOL.get_reviews(user_id=user_id)
             if user_reviews:
-                exact_results = [r for r in user_reviews if r.get("item_id") == item_id]
-                if exact_results:
-                    return exact_results[0]
+                if isinstance(user_reviews, str):
+                    try:
+                        user_reviews = json.loads(user_reviews)
+                    except json.JSONDecodeError:
+                        user_reviews = []
+                if isinstance(user_reviews, list):
+                    exact_results = [r for r in user_reviews if r.get("item_id") == item_id]
+                    if exact_results:
+                        return exact_results[0]
     except Exception:
         pass
     
@@ -140,7 +156,9 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
         user_info = fetch_user_data(uid)
         item_info = fetch_item_data(iid)
         review_info = fetch_review_data(uid, iid)
-        
+        print("user_info size:", uid,", ", len(user_info) if user_info else 0)
+        print("item_info size:", iid,", ", len(item_info) if item_info else 0)
+        print("review_info size:", len(review_info) if review_info else 0)
         # Step 2: Case Detection
         if user_info and item_info and review_info:
             case_type = "User + Restaurant + Review"
@@ -191,7 +209,9 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
         if self.agents_config_path:
             import yaml
             with open(self.agents_config_path, "r", encoding='utf-8') as f:
-                crew_instance.agents_config = yaml.safe_load(f)
+                config_data = yaml.safe_load(f)
+                crew_instance.agents_config = config_data
+                crew_instance.tasks_config = config_data
 
         result = crew_instance.crew().kickoff(inputs=inputs)
         
