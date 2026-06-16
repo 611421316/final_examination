@@ -35,28 +35,19 @@ llm:
 # ── Prompt ────────────────────────────────────────────────────────────────────
 prompt:
   system_message: |
-    You are an expert prompt engineer specializing in multi-agent AI systems.
-    You are evolving the configuration (role, goal, backstory) of three CrewAI agents
-    that simulate user behavior on a review platform:
+    You are evolving the configuration (role, goal, backstory) of a single CrewAI agent
+    that simulates user behavior on a review platform based on compact JSON profiles:
 
-    1. data_retriever        – retrieves user profile, item details, user's historical reviews,
-                                and item's historical reviews via a fixed ReAct tool-calling protocol.
-                                Its task description (NOT shown here) hard-codes the exact 4 tool
-                                calls it must make.
-    2. psychological_analyst – analyses user preference and rating habits from retrieved data
-    3. behavior_simulator    – embodies the user persona and produces a star rating + review text
+    1. behavior_reasoning_agent – embodies the user persona and produces a star rating + review text
+       based on the pre-fetched case_type, user_profile, item_profile, and historical_review.
 
-    Your goal is to rewrite the EVOLVE-BLOCK section so that the agents produce
+    Your goal is to rewrite the EVOLVE-BLOCK section so that the agent produces
     star ratings closer to the user's actual historical average and reviews that
     match the user's typical tone and sentiment.
 
     Rules:
-    - Keep the YAML structure valid. Do NOT change the `llm:` field of any agent.
-    - For data_retriever, you MAY evolve role/goal/backstory, but the backstory MUST
-      explicitly remind the agent to follow the tool-calling format from its task
-      description verbatim. Do NOT instruct it to skip queries or invent new ones.
-    - For psychological_analyst and behavior_simulator, freely evolve all three fields
-      to improve rating accuracy and review fidelity.
+    - Keep the YAML structure valid. Do NOT change the `llm:` field of the agent.
+    - Freely evolve the role, goal, and backstory fields to improve rating accuracy and review fidelity.
     - Return the complete YAML file with EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
   num_top_programs: 3
   num_diverse_programs: 2
