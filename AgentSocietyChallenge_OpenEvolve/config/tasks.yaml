@@ -1,21 +1,72 @@
+
+analyze_user_task:
+  description: >
+    Analyze the provided user profile.
+
+    User Profile:
+    {user_profile}
+
+    Determine:
+    - rating_anchor
+    - strictness
+    - sentiment_bias
+    - review_style
+    - verbosity
+
+    Return JSON only.
+
+  expected_output: >
+    JSON user analysis.
+
+  agent: user_analyst
+
+analyze_item_task:
+  description: >
+    Analyze the provided restaurant profile.
+
+    Restaurant Profile:
+    {item_profile}
+
+    Determine:
+    - quality_level
+    - popularity
+    - expected_sentiment
+    - restaurant_strength
+
+    Return JSON only.
+
+  expected_output: >
+    JSON item analysis.
+
+  agent: item_analyst
+
 predict_review_task:
   description: >
-    Predict the rating and write a review based on the following pre-fetched context.
-    
-    Case Type: {case_type}
-    
-    User Profile: {user_profile}
-    Item Profile: {item_profile}
-    Historical Review: {historical_review}
-    
-    INSTRUCTIONS:
-    - If Case Type is "User + Restaurant + Review", heavily rely on the historical review's sentiment and rating. Focus on rewriting it in a natural way while maintaining the original meaning.
-    - If Case Type is "User + Restaurant", infer the rating from the user's average_stars and the restaurant's stars. Write a review matching the user's style based on the restaurant's attributes.
-    - If Case Type is "Restaurant Only", act as a typical user reviewing a restaurant with the given attributes and overall rating.
-    - If Case Type is "No User and No Restaurant", provide a neutral, balanced generic review.
-    
-    OUTPUT:
-    You must output a raw JSON dictionary containing exactly two keys: "stars" (float) and "review" (string). DO NOT add markdown blocks or conversational text.
+    Inputs:
+
+    Case Type:
+    {case_type}
+
+    User Analysis:
+    {analyze_user_task.output}
+
+    Item Analysis:
+    {analyze_item_task.output}
+
+    Historical Review:
+    {historical_review}
+
+    Generate:
+
+    {
+      "stars": float,
+      "review": string
+    }
+
+    Return raw JSON only.
+
   expected_output: >
-    A JSON dictionary containing "stars" and "review" keys.
-  agent: behavior_reasoning_agent
+    Final prediction JSON.
+
+  agent: prediction_modeler
+# EVOLVE-BLOCK-END

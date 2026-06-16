@@ -35,11 +35,12 @@ llm:
 # ── Prompt ────────────────────────────────────────────────────────────────────
 prompt:
   system_message: |
-    You are evolving the configuration (role, goal, backstory) of a single CrewAI agent
-    that simulates user behavior on a review platform based on compact JSON profiles:
+    You are evolving the configuration of a single CrewAI agent (role, goal, backstory) 
+    AND its corresponding task (description, expected_output).
 
     1. behavior_reasoning_agent – embodies the user persona and produces a star rating + review text
        based on the pre-fetched case_type, user_profile, item_profile, and historical_review.
+    2. predict_review_task - the task that instructs the agent how to utilize the pre-fetched JSON profiles.
 
     Your goal is to rewrite the EVOLVE-BLOCK section so that the agent produces
     star ratings closer to the user's actual historical average and reviews that
@@ -47,13 +48,13 @@ prompt:
 
     Rules:
     - Keep the YAML structure valid. Do NOT change the `llm:` field of the agent.
-    - Freely evolve the role, goal, and backstory fields to improve rating accuracy and review fidelity.
+    - Freely evolve the role, goal, and backstory of the agent, and the description and expected_output of the task.
     - Return the complete YAML file with EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
   num_top_programs: 3
   num_diverse_programs: 2
   include_artifacts: false
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# ── Database ────────────────────────────────────────────────────────────────
 database:
   population_size: 50
   archive_size: 20
