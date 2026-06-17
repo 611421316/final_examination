@@ -22,16 +22,24 @@ Core design:
 2. Python computes predicted_stars deterministically from config/eval_evolving.yaml.
 3. CrewAI final agent must use predicted_stars exactly and only generate JSON review text.
 4. OpenEvolve mutates only the YAML policy inside EVOLVE-BLOCK.
+
+Rating design:
+- If user signal exists, include base_user_weight.
+- If item signal exists, include base_item_weight.
+- If direct review signal exists, include direct_review_weight.
+- If a signal is missing, remove its weight and renormalize remaining available weights.
+- If no signal exists, use default_prior.
+- Final predicted_stars is rounded to 1 decimal place, not nearest 0.5.
 """
 
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import statistics
 from collections import Counter, defaultdict
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -180,20 +188,37 @@ def _as_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def _as_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y", "on"}:
+        return True
+    if text in {"false", "0", "no", "n", "off"}:
+        return False
+    return default
+
+
 def _clamp(value: float, low: float = 1.0, high: float = 5.0) -> float:
     return max(low, min(high, value))
 
 
-def _round_half(value: float) -> float:
+def _round_one_decimal(value: float) -> float:
     """
-    Standard half-up rounding to the nearest 0.5.
+    Round stars to exactly 1 decimal using half-up rounding.
 
-    Avoid Python banker's rounding:
-        round(4.25 * 2) / 2 -> 4.0
-    We want:
-        4.25 -> 4.5
+    Examples:
+        4.237 -> 4.2
+        4.25  -> 4.3
+        3.86  -> 3.9
+        5.01  -> 5.0 after clamp
     """
-    return math.floor(value * 2.0 + 0.5) / 2.0
+    value = _clamp(float(value), 1.0, 5.0)
+    return float(Decimal(str(value)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _compact_text(text: Any, limit: int = 380) -> str:
@@ -564,126 +589,341 @@ def _summarize_review_style(
 # =============================================================================
 
 
-def _compute_stars(user: dict, item: dict, style: dict) -> float:
+def _weight_confidence_multiplier(
+    count: int,
+    divisor: float,
+    bonus: float,
+    min_multiplier: float,
+    max_multiplier: float,
+) -> float:
+    """
+    Convert review_count into a bounded multiplier.
+
+    This does NOT create a signal if the corresponding data is missing.
+    It only slightly strengthens an available user/item signal.
+    """
+    divisor = max(float(divisor), 1.0)
+    bonus = _clamp(float(bonus), 0.0, 3.0)
+    min_multiplier = _clamp(float(min_multiplier), 0.05, 10.0)
+    max_multiplier = _clamp(float(max_multiplier), min_multiplier, 10.0)
+
+    confidence = min(max(float(count), 0.0) / divisor, 1.0)
+    return _clamp(1.0 + confidence * bonus, min_multiplier, max_multiplier)
+
+
+def _blend_with_history(
+    base_score: float,
+    history_score: Any,
+    history_count: int,
+    min_count: int,
+    blend_weight: float,
+) -> tuple[float, bool]:
+    """
+    Blend a profile score with historical review average only when history exists.
+    """
+    if history_score is None or history_count < min_count:
+        return base_score, False
+
+    w = _clamp(_as_float(blend_weight, 0.0), 0.0, 0.95)
+    hist = _clamp(_as_float(history_score, base_score))
+    blended = (1.0 - w) * base_score + w * hist
+    return _clamp(blended), True
+
+
+def _compute_star_details(user: dict, item: dict, style: dict) -> dict:
     """
     Deterministic predicted stars controlled by config/eval_evolving.yaml.
 
-    OpenEvolve mutates eval_evolving.yaml.
-    This function loads that policy and applies evolved parameters.
+    Core rule:
+    - If user data exists, include user signal.
+    - If item data exists, include item signal.
+    - If direct review exists, include direct review signal.
+    - If a signal is missing, remove that signal and renormalize remaining weights.
+    - If no signal exists, use default_prior.
+    - Final predicted_stars is rounded to 1 decimal place.
     """
     default_prior = _as_float(_policy_get(["rating_policy", "default_prior"], 3.8), 3.8)
     min_stars = _as_float(_policy_get(["rating_policy", "rounding", "min_stars"], 1.0), 1.0)
     max_stars = _as_float(_policy_get(["rating_policy", "rounding", "max_stars"], 5.0), 5.0)
 
-    direct_exists = bool(style.get("direct_review_exists"))
-    direct_stars = style.get("direct_review_stars")
+    # Dynamic policy path.
+    base_user_weight = _as_float(
+        _policy_get(["rating_policy", "evidence_weights", "base_user_weight"], None),
+        0.20,
+    )
+    base_item_weight = _as_float(
+        _policy_get(["rating_policy", "evidence_weights", "base_item_weight"], None),
+        0.20,
+    )
+    direct_review_weight = _as_float(
+        _policy_get(["rating_policy", "evidence_weights", "direct_review_weight"], None),
+        0.60,
+    )
 
-    if direct_exists and direct_stars is not None:
-        return float(_round_half(_clamp(_as_float(direct_stars, default_prior), min_stars, max_stars)))
+    # Backward compatibility with old case_2 policy if evidence_weights is absent.
+    old_case2 = ["rating_policy", "case_rules", "case_2"]
+    if _policy_get(["rating_policy", "evidence_weights"], None) is None:
+        base_user_weight = _as_float(_policy_get(old_case2 + ["base_user_weight"], 0.65), 0.65)
+        base_item_weight = _as_float(_policy_get(old_case2 + ["base_item_weight"], 0.35), 0.35)
+        direct_review_weight = _as_float(_policy_get(old_case2 + ["direct_review_weight"], 1.0), 1.0)
+
+    base_user_weight = _clamp(base_user_weight, 0.001, 10.0)
+    base_item_weight = _clamp(base_item_weight, 0.001, 10.0)
+    direct_review_weight = _clamp(direct_review_weight, 0.001, 10.0)
+
+    user_confidence_divisor = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "user_confidence_divisor"], 50.0),
+        50.0,
+    )
+    item_confidence_divisor = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "item_confidence_divisor"], 100.0),
+        100.0,
+    )
+    user_confidence_bonus = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "user_confidence_bonus"], 0.25),
+        0.25,
+    )
+    item_confidence_bonus = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "item_confidence_bonus"], 0.20),
+        0.20,
+    )
+    min_confidence_multiplier = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "min_confidence_multiplier"], 0.70),
+        0.70,
+    )
+    max_confidence_multiplier = _as_float(
+        _policy_get(["rating_policy", "confidence_policy", "max_confidence_multiplier"], 1.30),
+        1.30,
+    )
+
+    user_history_blend_weight = _as_float(
+        _policy_get(["rating_policy", "history_blend_policy", "user_history_blend_weight"], 0.25),
+        0.25,
+    )
+    item_history_blend_weight = _as_float(
+        _policy_get(["rating_policy", "history_blend_policy", "item_history_blend_weight"], 0.20),
+        0.20,
+    )
+    user_history_min_count = _as_int(
+        _policy_get(["rating_policy", "history_blend_policy", "user_history_min_count"], 3),
+        3,
+    )
+    item_history_min_count = _as_int(
+        _policy_get(["rating_policy", "history_blend_policy", "item_history_min_count"], 3),
+        3,
+    )
+
+    user_anchor_min_review_count = _as_int(
+        _policy_get(["rating_policy", "anchor_policy", "user_anchor_min_review_count"], 30),
+        30,
+    )
+    user_anchor_max_delta = _as_float(
+        _policy_get(["rating_policy", "anchor_policy", "user_anchor_max_delta"], 0.70),
+        0.70,
+    )
+    item_anchor_min_review_count = _as_int(
+        _policy_get(["rating_policy", "anchor_policy", "item_anchor_min_review_count"], 80),
+        80,
+    )
+    item_anchor_max_delta = _as_float(
+        _policy_get(["rating_policy", "anchor_policy", "item_anchor_max_delta"], 1.10),
+        1.10,
+    )
+
+    # Anti-saturation guard: without direct user-item evidence, a perfect 5.0 is
+    # usually overconfident. This prevents user/item averages alone from forcing
+    # the simulator to output 5.0 for unseen interactions.
+    anti_saturation_enabled = _as_bool(
+        _policy_get(["rating_policy", "anti_saturation_policy", "enabled"], True),
+        True,
+    )
+    require_direct_review_for_5 = _as_bool(
+        _policy_get(["rating_policy", "anti_saturation_policy", "require_direct_review_for_5"], True),
+        True,
+    )
+    no_direct_review_max_stars = _as_float(
+        _policy_get(["rating_policy", "anti_saturation_policy", "no_direct_review_max_stars"], 4.7),
+        4.7,
+    )
+    direct_review_max_adjustment = _as_float(
+        _policy_get(["rating_policy", "anti_saturation_policy", "direct_review_max_adjustment"], 0.4),
+        0.4,
+    )
 
     user_exists = bool(user)
     item_exists = bool(item)
+    direct_exists = bool(style.get("direct_review_exists"))
+    direct_stars = style.get("direct_review_stars")
 
-    user_avg = _as_float(user.get("average_stars"), default_prior) if user_exists else default_prior
-    item_avg = _as_float(item.get("stars"), default_prior) if item_exists else default_prior
+    signals: list[dict[str, Any]] = []
 
-    user_count = _as_int(user.get("review_count"), 0) if user_exists else 0
-    item_count = _as_int(item.get("review_count"), 0) if item_exists else 0
+    if user_exists:
+        user_avg = _clamp(_as_float(user.get("average_stars"), default_prior), min_stars, max_stars)
+        user_count = _as_int(user.get("review_count"), 0)
 
-    if not user_exists and not item_exists:
-        return float(_round_half(_clamp(default_prior, min_stars, max_stars)))
+        user_score, user_history_used = _blend_with_history(
+            base_score=user_avg,
+            history_score=style.get("user_history_average_stars"),
+            history_count=_as_int(style.get("user_review_count_used"), 0),
+            min_count=user_history_min_count,
+            blend_weight=user_history_blend_weight,
+        )
 
-    if user_exists and not item_exists:
-        hist_avg = style.get("user_history_average_stars")
-        if hist_avg is not None:
-            user_avg = 0.75 * user_avg + 0.25 * _as_float(hist_avg, user_avg)
-        return float(_round_half(_clamp(user_avg, min_stars, max_stars)))
+        user_multiplier = _weight_confidence_multiplier(
+            count=user_count,
+            divisor=user_confidence_divisor,
+            bonus=user_confidence_bonus,
+            min_multiplier=min_confidence_multiplier,
+            max_multiplier=max_confidence_multiplier,
+        )
 
-    if not user_exists and item_exists:
-        hist_item_avg = style.get("item_history_average_stars")
-        if hist_item_avg is not None:
-            item_avg = 0.75 * item_avg + 0.25 * _as_float(hist_item_avg, item_avg)
-        return float(_round_half(_clamp(item_avg, min_stars, max_stars)))
+        signals.append(
+            {
+                "name": "user",
+                "score": user_score,
+                "base_score": user_avg,
+                "base_weight": base_user_weight,
+                "raw_weight": base_user_weight * user_multiplier,
+                "confidence_multiplier": user_multiplier,
+                "history_used": user_history_used,
+                "review_count": user_count,
+            }
+        )
 
-    case2_path = ["rating_policy", "case_rules", "case_2"]
+    if item_exists:
+        item_avg = _clamp(_as_float(item.get("stars"), default_prior), min_stars, max_stars)
+        item_count = _as_int(item.get("review_count"), 0)
 
-    base_user_weight = _as_float(_policy_get(case2_path + ["base_user_weight"], 0.65), 0.65)
-    base_item_weight = _as_float(_policy_get(case2_path + ["base_item_weight"], 0.35), 0.35)
+        item_score, item_history_used = _blend_with_history(
+            base_score=item_avg,
+            history_score=style.get("item_history_average_stars"),
+            history_count=_as_int(style.get("item_review_count_used"), 0),
+            min_count=item_history_min_count,
+            blend_weight=item_history_blend_weight,
+        )
 
-    user_confidence_divisor = _as_float(_policy_get(case2_path + ["user_confidence_divisor"], 50.0), 50.0)
-    item_confidence_divisor = _as_float(_policy_get(case2_path + ["item_confidence_divisor"], 100.0), 100.0)
+        item_multiplier = _weight_confidence_multiplier(
+            count=item_count,
+            divisor=item_confidence_divisor,
+            bonus=item_confidence_bonus,
+            min_multiplier=min_confidence_multiplier,
+            max_multiplier=max_confidence_multiplier,
+        )
 
-    user_confidence_bonus = _as_float(_policy_get(case2_path + ["user_confidence_bonus"], 0.25), 0.25)
-    item_confidence_bonus = _as_float(_policy_get(case2_path + ["item_confidence_bonus"], 0.20), 0.20)
+        signals.append(
+            {
+                "name": "item",
+                "score": item_score,
+                "base_score": item_avg,
+                "base_weight": base_item_weight,
+                "raw_weight": base_item_weight * item_multiplier,
+                "confidence_multiplier": item_multiplier,
+                "history_used": item_history_used,
+                "review_count": item_count,
+            }
+        )
 
-    historical_user_review_blend_weight = _as_float(
-        _policy_get(case2_path + ["historical_user_review_blend_weight"], 0.30),
-        0.30,
-    )
-    historical_user_review_min_count = _as_int(
-        _policy_get(case2_path + ["historical_user_review_min_count"], 3),
-        3,
-    )
+    if direct_exists and direct_stars is not None:
+        direct_score = _clamp(_as_float(direct_stars, default_prior), min_stars, max_stars)
 
-    historical_item_review_blend_weight = _as_float(
-        _policy_get(case2_path + ["historical_item_review_blend_weight"], 0.15),
-        0.15,
-    )
-    historical_item_review_min_count = _as_int(
-        _policy_get(case2_path + ["historical_item_review_min_count"], 3),
-        3,
-    )
+        # Keep direct review strongest when it exists, without forcing it to 100%.
+        strongest_available_weight = 0.0
+        for s in signals:
+            strongest_available_weight = max(strongest_available_weight, _as_float(s.get("raw_weight"), 0.0))
 
-    user_anchor_min_review_count = _as_int(_policy_get(case2_path + ["user_anchor_min_review_count"], 30), 30)
-    user_anchor_max_delta = _as_float(_policy_get(case2_path + ["user_anchor_max_delta"], 0.70), 0.70)
+        adjusted_direct_weight = max(direct_review_weight, strongest_available_weight + 0.001)
 
-    item_anchor_min_review_count = _as_int(_policy_get(case2_path + ["item_anchor_min_review_count"], 80), 80)
-    item_anchor_max_delta = _as_float(_policy_get(case2_path + ["item_anchor_max_delta"], 1.10), 1.10)
+        signals.append(
+            {
+                "name": "direct_review",
+                "score": direct_score,
+                "base_score": direct_score,
+                "base_weight": direct_review_weight,
+                "raw_weight": adjusted_direct_weight,
+                "confidence_multiplier": 1.0,
+                "history_used": False,
+                "review_count": 1,
+            }
+        )
 
-    base_user_weight = _clamp(base_user_weight, 0.05, 5.0)
-    base_item_weight = _clamp(base_item_weight, 0.05, 5.0)
-    user_confidence_divisor = max(user_confidence_divisor, 1.0)
-    item_confidence_divisor = max(item_confidence_divisor, 1.0)
-    user_confidence_bonus = _clamp(user_confidence_bonus, 0.0, 3.0)
-    item_confidence_bonus = _clamp(item_confidence_bonus, 0.0, 3.0)
-    historical_user_review_blend_weight = _clamp(historical_user_review_blend_weight, 0.0, 0.9)
-    historical_item_review_blend_weight = _clamp(historical_item_review_blend_weight, 0.0, 0.7)
-    user_anchor_max_delta = _clamp(user_anchor_max_delta, 0.0, 4.0)
-    item_anchor_max_delta = _clamp(item_anchor_max_delta, 0.0, 4.0)
+    if not signals:
+        raw_stars = _clamp(default_prior, min_stars, max_stars)
+        predicted_stars = float(_round_one_decimal(raw_stars))
+        return {
+            "method": "default_prior",
+            "raw_stars": round(raw_stars, 6),
+            "predicted_stars": predicted_stars,
+            "signals": [],
+            "available_signal_names": [],
+            "weight_sum": 0.0,
+        }
 
-    user_conf = min(user_count / user_confidence_divisor, 1.0)
-    item_conf = min(item_count / item_confidence_divisor, 1.0)
+    weight_sum = sum(_as_float(s.get("raw_weight"), 0.0) for s in signals)
 
-    user_weight = base_user_weight + user_confidence_bonus * user_conf
-    item_weight = base_item_weight + item_confidence_bonus * item_conf
-
-    denominator = user_weight + item_weight
-    if denominator <= 0:
-        rating = default_prior
+    if weight_sum <= 0:
+        raw_stars = _clamp(default_prior, min_stars, max_stars)
     else:
-        rating = (user_weight * user_avg + item_weight * item_avg) / denominator
+        raw_stars = sum(
+            _as_float(s.get("score"), default_prior) * _as_float(s.get("raw_weight"), 0.0)
+            for s in signals
+        ) / weight_sum
 
-    hist_user_avg = style.get("user_history_average_stars")
-    user_review_count_used = _as_int(style.get("user_review_count_used"), 0)
-    if hist_user_avg is not None and user_review_count_used >= historical_user_review_min_count:
-        hist_user_avg = _as_float(hist_user_avg, rating)
-        w = historical_user_review_blend_weight
-        rating = (1.0 - w) * rating + w * hist_user_avg
+    # Optional anchoring only applies when the corresponding signal exists.
+    user_signal = next((s for s in signals if s["name"] == "user"), None)
+    item_signal = next((s for s in signals if s["name"] == "item"), None)
 
-    hist_item_avg = style.get("item_history_average_stars")
-    item_review_count_used = _as_int(style.get("item_review_count_used"), 0)
-    if hist_item_avg is not None and item_review_count_used >= historical_item_review_min_count:
-        hist_item_avg = _as_float(hist_item_avg, rating)
-        w = historical_item_review_blend_weight
-        rating = (1.0 - w) * rating + w * hist_item_avg
+    if user_signal and _as_int(user_signal.get("review_count"), 0) >= user_anchor_min_review_count:
+        user_base = _as_float(user_signal.get("base_score"), raw_stars)
+        delta = _clamp(user_anchor_max_delta, 0.0, 4.0)
+        raw_stars = max(user_base - delta, min(user_base + delta, raw_stars))
 
-    if user_count >= user_anchor_min_review_count:
-        rating = max(user_avg - user_anchor_max_delta, min(user_avg + user_anchor_max_delta, rating))
+    if item_signal and _as_int(item_signal.get("review_count"), 0) >= item_anchor_min_review_count:
+        item_base = _as_float(item_signal.get("base_score"), raw_stars)
+        delta = _clamp(item_anchor_max_delta, 0.0, 4.0)
+        raw_stars = max(item_base - delta, min(item_base + delta, raw_stars))
 
-    if item_count >= item_anchor_min_review_count:
-        rating = max(item_avg - item_anchor_max_delta, min(item_avg + item_anchor_max_delta, rating))
+    # Guard against unrealistic 5.0 predictions when there is no exact
+    # historical review for this user-item pair. User/item averages are useful
+    # priors, but they should not create maximum certainty by themselves.
+    if anti_saturation_enabled:
+        no_direct_review_max_stars = _clamp(no_direct_review_max_stars, min_stars, max_stars)
+        if not direct_exists and require_direct_review_for_5:
+            raw_stars = min(raw_stars, no_direct_review_max_stars)
+        elif direct_exists and direct_stars is not None:
+            direct_score_for_cap = _clamp(_as_float(direct_stars, default_prior), min_stars, max_stars)
+            if direct_score_for_cap < 5.0:
+                raw_stars = min(raw_stars, direct_score_for_cap + _clamp(direct_review_max_adjustment, 0.0, 2.0))
 
-    return float(_round_half(_clamp(rating, min_stars, max_stars)))
+    raw_stars = _clamp(raw_stars, min_stars, max_stars)
+    predicted_stars = float(_round_one_decimal(raw_stars))
+
+    normalized_signals = []
+    for s in signals:
+        raw_weight = _as_float(s.get("raw_weight"), 0.0)
+        normalized = raw_weight / weight_sum if weight_sum > 0 else 0.0
+        new_s = dict(s)
+        new_s["normalized_weight"] = round(normalized, 6)
+        new_s["score"] = round(_as_float(new_s.get("score"), default_prior), 6)
+        new_s["raw_weight"] = round(raw_weight, 6)
+        normalized_signals.append(new_s)
+
+    return {
+        "method": "dynamic_available_evidence_weighted_average",
+        "raw_stars": round(raw_stars, 6),
+        "predicted_stars": predicted_stars,
+        "signals": normalized_signals,
+        "available_signal_names": [s["name"] for s in normalized_signals],
+        "weight_sum": round(weight_sum, 6),
+        "anti_saturation_applied": bool(anti_saturation_enabled),
+        "no_direct_review_max_stars": no_direct_review_max_stars if anti_saturation_enabled else None,
+    }
+
+
+def _compute_stars(user: dict, item: dict, style: dict) -> float:
+    """
+    Backward-compatible wrapper. Existing pipeline calls this function.
+    """
+    return float(_compute_star_details(user, item, style)["predicted_stars"])
 
 
 # =============================================================================
@@ -696,8 +936,8 @@ def _detect_case_from_flags(user_exists: bool, item_exists: bool, direct_review_
         return {
             "case_number": 1,
             "case_name": "Case 1: user exists, item exists, direct historical review exists",
-            "dominant_evidence": "direct_review",
-            "fallback_policy": "use direct review first, then user and item context",
+            "dominant_evidence": "user_item_and_direct_review",
+            "fallback_policy": "use user, item, and direct review evidence; direct review remains strongest",
         }
     if user_exists and item_exists and not direct_review_exists:
         return {
@@ -710,36 +950,36 @@ def _detect_case_from_flags(user_exists: bool, item_exists: bool, direct_review_
         return {
             "case_number": 3,
             "case_name": "Case 3: user missing, item exists, direct historical review exists",
-            "dominant_evidence": "direct_review_and_item_profile",
-            "fallback_policy": "use direct review first, then item context",
+            "dominant_evidence": "item_and_direct_review",
+            "fallback_policy": "exclude user weight; combine item and direct review evidence",
         }
     if not user_exists and item_exists and not direct_review_exists:
         return {
             "case_number": 4,
             "case_name": "Case 4: user missing, item exists, no direct historical review",
             "dominant_evidence": "item_profile_and_item_history",
-            "fallback_policy": "use item stars, item review history, and category context",
+            "fallback_policy": "exclude user and direct review weights; use item evidence only",
         }
     if user_exists and not item_exists and direct_review_exists:
         return {
             "case_number": 5,
             "case_name": "Case 5: user exists, item missing, direct historical review exists",
-            "dominant_evidence": "direct_review_and_user_profile",
-            "fallback_policy": "use direct review first, then user behavior",
+            "dominant_evidence": "user_and_direct_review",
+            "fallback_policy": "exclude item weight; combine user and direct review evidence",
         }
     if user_exists and not item_exists and not direct_review_exists:
         return {
             "case_number": 6,
             "case_name": "Case 6: user exists, item missing, no direct historical review",
             "dominant_evidence": "user_profile_and_user_history",
-            "fallback_policy": "use user rating tendency and avoid item-specific details",
+            "fallback_policy": "exclude item and direct review weights; use user evidence only",
         }
     if not user_exists and not item_exists and direct_review_exists:
         return {
             "case_number": 7,
             "case_name": "Case 7: user missing, item missing, direct historical review exists",
             "dominant_evidence": "direct_review_only",
-            "fallback_policy": "use direct review evidence only and avoid unsupported profile or item facts",
+            "fallback_policy": "exclude user and item weights; use direct review evidence only",
         }
     return {
         "case_number": 8,
@@ -804,7 +1044,7 @@ def _build_evidence_summary(user: dict, item: dict, style: dict, case_info: dict
     if style.get("direct_review_exists"):
         summary["direct_review_signal"] = (
             f"Direct historical review exists with stars={style.get('direct_review_stars')}. "
-            "This is the strongest rating and sentiment evidence."
+            "This is the strongest rating and sentiment evidence, but available user/item signals can still be blended."
         )
     else:
         summary["direct_review_signal"] = "No direct historical review exists for this user-item pair."
@@ -816,7 +1056,7 @@ def _build_evidence_summary(user: dict, item: dict, style: dict, case_info: dict
             f"rating_tendency={_rating_tendency(user_avg or 3.8)}."
         )
     else:
-        summary["user_signal"] = "User profile is missing; avoid user-specific claims."
+        summary["user_signal"] = "User profile is missing; user weight is excluded and user-specific claims must be avoided."
 
     if item:
         categories = ", ".join(_extract_categories(item)[:6])
@@ -826,7 +1066,7 @@ def _build_evidence_summary(user: dict, item: dict, style: dict, case_info: dict
             f"categories={categories}."
         )
     else:
-        summary["item_signal"] = "Item profile is missing; avoid item-specific claims."
+        summary["item_signal"] = "Item profile is missing; item weight is excluded and item-specific claims must be avoided."
 
     summary["history_signal"] = (
         f"User history reviews used={style.get('user_review_count_used', 0)}, "
@@ -837,15 +1077,15 @@ def _build_evidence_summary(user: dict, item: dict, style: dict, case_info: dict
 
     case_number = case_info.get("case_number")
     if case_number == 1:
-        summary["generation_note"] = "Preserve direct review sentiment; item/user context may only support wording."
+        summary["generation_note"] = "Use direct review, user signal, and item signal; direct review remains strongest."
     elif case_number == 2:
         summary["generation_note"] = "Use user tendency and item facts, but never claim the user reviewed this exact item before."
     elif case_number == 3:
-        summary["generation_note"] = "Use direct review and item facts; do not infer user history."
+        summary["generation_note"] = "Use item and direct review evidence; do not infer user history."
     elif case_number == 4:
         summary["generation_note"] = "Use item facts and item history only; avoid user-specific claims."
     elif case_number == 5:
-        summary["generation_note"] = "Use direct review and user profile; avoid unsupported item-specific details."
+        summary["generation_note"] = "Use user and direct review evidence; avoid unsupported item-specific details."
     elif case_number == 6:
         summary["generation_note"] = "Use user profile and user history only; keep item details generic."
     elif case_number == 7:
@@ -962,17 +1202,25 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
         direct_review_exists=bool(style.get("direct_review_exists")),
     )
 
-    predicted_stars = _compute_stars(user, item, style)
+    prediction_details = _compute_star_details(user, item, style)
+    predicted_stars = prediction_details["predicted_stars"]
 
     calculation_trace = {
         "policy_path": str(_get_eval_policy_path()),
         "default_prior": _policy_get(["rating_policy", "default_prior"], 3.8),
         "case_number": case_info["case_number"],
-        "rounding_mode": _policy_get(["rating_policy", "rounding", "mode"], "nearest_half_up"),
+        "rounding_mode": _policy_get(["rating_policy", "rounding", "mode"], "one_decimal_half_up"),
+        "decimal_places": _policy_get(["rating_policy", "rounding", "decimal_places"], 1),
         "direct_reviews_found": len(direct_reviews),
         "user_history_reviews_found": len(user_history_reviews),
         "item_history_reviews_found": len(item_history_reviews),
         "merged_reviews_found": len(merged_reviews),
+        "rating_method": prediction_details.get("method"),
+        "raw_stars": prediction_details.get("raw_stars"),
+        "predicted_stars": predicted_stars,
+        "available_signal_names": prediction_details.get("available_signal_names"),
+        "weight_sum": prediction_details.get("weight_sum"),
+        "signals": prediction_details.get("signals"),
     }
 
     print("=" * 100, flush=True)
@@ -988,7 +1236,9 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
     print(f"item_history_reviews_found : {len(item_history_reviews)}", flush=True)
     print(f"merged_reviews_found       : {len(merged_reviews)}", flush=True)
     print(f"case_number                : {case_info['case_number']}", flush=True)
+    print(f"raw_stars                  : {prediction_details.get('raw_stars')}", flush=True)
     print(f"predicted_stars            : {predicted_stars}", flush=True)
+    print(f"available_signal_names     : {prediction_details.get('available_signal_names')}", flush=True)
     print(f"policy_path                : {_get_eval_policy_path()}", flush=True)
     print(f"user_file                  : {_USER_JSON_PATH}", flush=True)
     print(f"item_file                  : {_ITEM_JSON_PATH}", flush=True)
@@ -1012,6 +1262,7 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
         "evidence_summary": _build_evidence_summary(user, item, style, case_info, predicted_stars),
         "review_policy": _get_review_policy_for_context(case_info["case_number"], predicted_stars),
         "predicted_stars": predicted_stars,
+        "rating_weight_trace": prediction_details,
         "final_instruction": (
             "Use predicted_stars exactly as the output stars value. "
             "Generate one natural Yelp-style review grounded only in the provided context. "

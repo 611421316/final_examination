@@ -10,6 +10,11 @@ try:
 except Exception:
     from simulation_crew import SimulationCrew, normalize_final_output
 
+try:
+    from src.tools.exact_lookup_tools import build_prediction_context
+except Exception:
+    from exact_lookup_tools import build_prediction_context
+
 
 def extract_json_from_output(raw_output: Any) -> Dict[str, Any]:
     """Extract final JSON from CrewAI output with fallback repair."""
@@ -78,6 +83,45 @@ def extract_json_from_output(raw_output: Any) -> Dict[str, Any]:
     }
 
 
+def call_build_prediction_context(user_id: str, item_id: str) -> Dict[str, Any]:
+    """
+    Call the deterministic Python lookup/tool before CrewAI runs.
+
+    This prevents the retriever LLM from hallucinating fake context such as
+    "Cafe Bliss" and ensures config/tasks.yaml can safely use {prediction_context}.
+    """
+    try:
+        raw_context = build_prediction_context.run(
+            user_id=user_id,
+            item_id=item_id,
+        )
+    except TypeError:
+        try:
+            raw_context = build_prediction_context.run({
+                "user_id": user_id,
+                "item_id": item_id,
+            })
+        except AttributeError:
+            raw_context = build_prediction_context(user_id=user_id, item_id=item_id)
+    except AttributeError:
+        raw_context = build_prediction_context(user_id=user_id, item_id=item_id)
+
+    if isinstance(raw_context, str):
+        try:
+            return json.loads(raw_context)
+        except json.JSONDecodeError:
+            start = raw_context.find("{")
+            end = raw_context.rfind("}")
+            if start >= 0 and end > start:
+                return json.loads(raw_context[start : end + 1])
+            raise
+
+    if isinstance(raw_context, dict):
+        return raw_context
+
+    return json.loads(str(raw_context))
+
+
 class InferenceState(BaseModel):
     user_id: str = ""
     item_id: str = ""
@@ -99,10 +143,24 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
 
     @listen(init_request)
     def trigger_crew_inference(self):
+        prediction_context = call_build_prediction_context(
+            user_id=self.state.user_id,
+            item_id=self.state.item_id,
+        )
+
+        predicted_stars = float(prediction_context.get("predicted_stars", 3.8))
+
         inputs = {
             "user_id": self.state.user_id,
             "item_id": self.state.item_id,
+            "prediction_context": json.dumps(prediction_context, ensure_ascii=False),
+            "predicted_stars": predicted_stars,
         }
+
+        print("[FLOW DEBUG] prediction_context injected:", True)
+        print("[FLOW DEBUG] predicted_stars:", predicted_stars)
+        print("[FLOW DEBUG] case:", prediction_context.get("case"))
+        print("[FLOW DEBUG] rating_weight_trace:", prediction_context.get("rating_weight_trace"))
 
         crew_instance = SimulationCrew()
 
@@ -119,7 +177,10 @@ class AgentSocietyServingFlow(Flow[InferenceState]):
         except Exception:
             data = extract_json_from_output(result)
 
-        self.state.predicted_rating = float(data.get("stars", 4.0))
+        # Deterministic safety: final stars must equal Python predicted_stars.
+        # Even if the final LLM returns only "5" or invalid JSON, keep the official
+        # rating controlled by build_prediction_context.
+        self.state.predicted_rating = predicted_stars
         self.state.generated_review = str(data.get("review", "Good."))
 
         return self.state.model_dump()

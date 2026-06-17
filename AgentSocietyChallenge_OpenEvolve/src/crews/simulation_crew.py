@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -112,8 +113,10 @@ def safe_json_loads(value: Any) -> Dict[str, Any]:
         return {}
 
 
-def _round_half(value: float) -> float:
-    return round(value * 2.0) / 2.0
+def _round_one_decimal(value: float) -> float:
+    """Round final stars to exactly 1 decimal using half-up rounding."""
+    value = max(1.0, min(5.0, float(value)))
+    return float(Decimal(str(value)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def fallback_review(stars: float) -> str:
@@ -136,7 +139,7 @@ def normalize_final_output(result: Any, predicted_stars: Optional[float] = None)
         except Exception:
             stars = 4.0
 
-    stars = max(1.0, min(5.0, _round_half(stars)))
+    stars = _round_one_decimal(stars)
 
     review = parsed.get("review", parsed.get("generated_review", ""))
     if not isinstance(review, str):
@@ -310,9 +313,18 @@ class SimulationCrew:
 
 
 def run_simulation(user_id: str, item_id: str) -> Dict[str, Any]:
-    predicted_stars = get_predicted_stars(user_id, item_id)
+    prediction_context = get_prediction_context(user_id, item_id)
+    predicted_stars = float(prediction_context.get("predicted_stars", 3.8))
+
     try:
-        result = SimulationCrew().crew().kickoff(inputs={"user_id": user_id, "item_id": item_id})
+        result = SimulationCrew().crew().kickoff(
+            inputs={
+                "user_id": user_id,
+                "item_id": item_id,
+                "prediction_context": json.dumps(prediction_context, ensure_ascii=False),
+                "predicted_stars": predicted_stars,
+            }
+        )
         return normalize_final_output(result, predicted_stars=predicted_stars)
     except Exception as exc:
         print(f"[SIMULATION WARNING] Crew failed for user_id={user_id}, item_id={item_id}: {exc}", flush=True)

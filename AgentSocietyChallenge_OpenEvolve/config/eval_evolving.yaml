@@ -2,7 +2,7 @@
 # Intended path: config/eval_evolving.yaml
 
 version: 2
-name: yelp_rating_review_eval_policy_research_quality
+name: yelp_rating_review_eval_policy_evidence_weighted
 
 fixed_contract:
   input_context:
@@ -21,7 +21,7 @@ fixed_contract:
       stars: float
       review: string
     stars_range: [1.0, 5.0]
-    stars_step: 0.5
+    stars_decimal_places: 1
 
   non_evolvable_rules:
     - Do not change data file paths.
@@ -29,9 +29,12 @@ fixed_contract:
     - Do not change CrewAI tool names.
     - Do not change output JSON schema.
     - Do not invent user, item, or review facts.
-    - If direct_review_exists is true, direct_review_stars must be the strongest rating signal.
     - Final output stars must equal predicted_stars exactly.
     - Review text must be grounded only in supplied context.
+    - If a signal is missing, exclude its weight and renormalize remaining available weights.
+    - If direct_review_exists is true, direct_review_stars must be the strongest rating signal.
+    - If no user, item, or direct review evidence exists, use default_prior.
+    - Final predicted_stars must be rounded to exactly 1 decimal place using half-up rounding.
 
 # EVOLVE-BLOCK-START
 
@@ -39,95 +42,192 @@ rating_policy:
   default_prior: 3.8
 
   rounding:
-    mode: nearest_half_up
+    mode: one_decimal_half_up
     min_stars: 1.0
     max_stars: 5.0
+    decimal_places: 1
+
+  evidence_weights:
+    base_user_weight: 0.20
+    base_item_weight: 0.20
+    direct_review_weight: 0.60
+
+  confidence_policy:
+    user_confidence_divisor: 50.0
+    item_confidence_divisor: 100.0
+
+    user_confidence_bonus: 0.25
+    item_confidence_bonus: 0.20
+
+    min_confidence_multiplier: 0.70
+    max_confidence_multiplier: 1.30
+
+  history_blend_policy:
+    user_history_blend_weight: 0.25
+    item_history_blend_weight: 0.20
+
+    user_history_min_count: 3
+    item_history_min_count: 3
+
+  anchor_policy:
+    user_anchor_min_review_count: 30
+    user_anchor_max_delta: 0.70
+
+    item_anchor_min_review_count: 80
+    item_anchor_max_delta: 1.10
+
+  anti_saturation_policy:
+    enabled: true
+    require_direct_review_for_5: true
+    no_direct_review_max_stars: 4.7
+    direct_review_max_adjustment: 0.4
+
+  evidence_formula:
+    method: dynamic_available_evidence_weighted_average
+
+    explanation: >
+      Compute predicted rating from all available evidence signals.
+      Available signals can include user evidence, item evidence, and direct review evidence.
+      If one signal is missing, remove that signal and renormalize the remaining weights.
+      Do not assign default value to missing evidence. Only use default_prior when no signal exists.
+
+    formula: >
+      available_signals = []
+
+      if user_exists:
+        available_signals.append((user_signal_score, base_user_weight_adjusted))
+
+      if item_exists:
+        available_signals.append((item_signal_score, base_item_weight_adjusted))
+
+      if direct_review_exists:
+        available_signals.append((direct_review_stars, direct_review_weight))
+
+      if available_signals is empty:
+        predicted_raw = default_prior
+      else:
+        predicted_raw =
+          sum(score * weight for score, weight in available_signals)
+          / sum(weight for score, weight in available_signals)
+
+      predicted_stars = round_to_one_decimal_half_up(predicted_raw)
+
+  signal_definitions:
+    user_signal:
+      exists_when: "user_exists=true"
+      preferred_sources:
+        - user.average_stars
+        - user.rating_distribution
+        - user historical review tendency
+      explanation: >
+        User signal estimates how this user tends to rate businesses.
+        If user review history exists, blend user average stars with historical rating behavior.
+        Do not use user signal when user profile is missing.
+
+    item_signal:
+      exists_when: "item_exists=true"
+      preferred_sources:
+        - item.stars
+        - item.average_stars
+        - item historical review evidence
+      explanation: >
+        Item signal estimates general quality of the item/business.
+        If item review history exists, blend item average stars with item historical evidence.
+        Do not use item signal when item profile is missing.
+
+    direct_review_signal:
+      exists_when: "direct_review_exists=true"
+      preferred_sources:
+        - direct_review.stars
+        - direct review content
+      explanation: >
+        Direct review is the strongest evidence because it is the exact user-item interaction.
+        However, it is still combined with user and item evidence when those signals exist.
+        Its weight must remain greater than user and item base weights.
 
   case_rules:
     case_1:
       condition: "user_exists=true,item_exists=true,direct_review_exists=true"
-      method: direct_review_stars
-      direct_review_weight: 1.0
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - user_signal
+        - item_signal
+        - direct_review_signal
       explanation: >
-        Use exact historical user-item review stars because the direct review exists.
-        User and item context may support review wording only.
+        Use user, item, and direct review evidence together.
+        Direct review should dominate but user and item context may slightly adjust prediction
+        and support review wording.
 
     case_2:
       condition: "user_exists=true,item_exists=true,direct_review_exists=false"
-      method: weighted_user_item_history_blend
-
-      base_user_weight: 0.65
-      base_item_weight: 0.35
-
-      user_confidence_divisor: 50.0
-      item_confidence_divisor: 100.0
-
-      user_confidence_bonus: 0.25
-      item_confidence_bonus: 0.20
-
-      historical_user_review_blend_weight: 0.30
-      historical_user_review_min_count: 3
-
-      historical_item_review_blend_weight: 0.15
-      historical_item_review_min_count: 3
-
-      user_anchor_min_review_count: 30
-      user_anchor_max_delta: 0.70
-
-      item_anchor_min_review_count: 80
-      item_anchor_max_delta: 1.10
-
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - user_signal
+        - item_signal
       explanation: >
-        Blend user average, item average, user historical review behavior, and item
-        historical review evidence. Increase user influence when user profile is
-        reliable; increase item influence when item profile is reliable. Do not
-        claim direct experience by this user because direct_review_exists is false.
+        Use user and item evidence only.
+        Exclude direct review weight and renormalize user and item weights.
+        Do not imply the user has reviewed or visited this exact item before.
 
     case_3:
       condition: "user_exists=false,item_exists=true,direct_review_exists=true"
-      method: direct_review_stars
-      direct_review_weight: 1.0
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - item_signal
+        - direct_review_signal
       explanation: >
-        Use exact historical review stars. Item context is used only for grounded wording.
+        Use item and direct review evidence.
+        Exclude user weight and renormalize item and direct review weights.
+        Do not infer user preferences or user history.
 
     case_4:
       condition: "user_exists=false,item_exists=true,direct_review_exists=false"
-      method: item_stars_with_item_history
-      item_weight: 1.0
-      item_history_blend_weight: 0.25
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - item_signal
       explanation: >
-        With no user profile and no direct review, use item average stars and item
-        review history if available. Avoid user-specific claims.
+        Use item evidence only.
+        Exclude user and direct review weights.
+        Avoid user-specific claims.
 
     case_5:
       condition: "user_exists=true,item_exists=false,direct_review_exists=true"
-      method: direct_review_stars
-      direct_review_weight: 1.0
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - user_signal
+        - direct_review_signal
       explanation: >
-        Use exact historical review stars. User profile is used only for tone.
+        Use user and direct review evidence.
+        Exclude item weight and renormalize user and direct review weights.
+        Avoid unsupported item-specific facts.
 
     case_6:
       condition: "user_exists=true,item_exists=false,direct_review_exists=false"
-      method: user_average_with_user_history
-      user_weight: 1.0
-      user_history_blend_weight: 0.25
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - user_signal
       explanation: >
-        With no item profile and no direct review, use user average stars and user
-        history. Keep item details generic.
+        Use user evidence only.
+        Exclude item and direct review weights.
+        Keep item details generic and low-specificity.
 
     case_7:
       condition: "user_exists=false,item_exists=false,direct_review_exists=true"
-      method: direct_review_stars
-      direct_review_weight: 1.0
+      method: dynamic_available_evidence_weighted_average
+      active_signals:
+        - direct_review_signal
       explanation: >
-        Use exact historical review stars and avoid unsupported profile or item facts.
+        Use direct review evidence only.
+        Exclude user and item weights.
+        Avoid unsupported user-profile or item-profile claims.
 
     case_8:
       condition: "user_exists=false,item_exists=false,direct_review_exists=false"
       method: default_prior
+      active_signals: []
       explanation: >
-        No evidence is available, so use default prior and generate a generic,
-        low-specificity review.
+        No evidence exists.
+        Use default_prior and generate a generic, low-specificity review.
 
 review_policy:
   global_rules:
@@ -167,13 +267,13 @@ review_policy:
       range: [4.0, 5.0]
       tone: positive
       guidance: >
-        Write a satisfied review. Highlight strengths supported by item/user evidence,
-        but avoid unsupported specifics.
+        Write a satisfied review. Highlight strengths supported by item/user/direct-review
+        evidence, but avoid unsupported specifics.
 
   case_review_guidance:
     case_1: >
-      Use direct review content and item facts. Preserve original sentiment direction.
-      The direct review is the strongest evidence.
+      Use direct review content first, then user tendency and item facts if available.
+      Preserve original sentiment direction. Direct review is the strongest evidence.
 
     case_2: >
       Use user rating tendency, user history style examples, item categories, and item
@@ -184,7 +284,7 @@ review_policy:
 
     case_4: >
       Use item facts and item history only. Write a plausible item-grounded review matching
-      item average rating. Avoid user-specific claims.
+      predicted_stars. Avoid user-specific claims.
 
     case_5: >
       Use direct review content and user tendency. Avoid item-specific facts if item profile is missing.
@@ -196,7 +296,7 @@ review_policy:
       Use direct review content only. Avoid both user-profile and item-profile claims.
 
     case_8: >
-      Use generic fallback review. Keep language neutral, low-specificity, and consistent with default prior.
+      Use generic fallback review. Keep language neutral, low-specificity, and consistent with default_prior.
 
 optimization_notes:
   primary_metric: star_accuracy
@@ -205,16 +305,24 @@ optimization_notes:
 
   evolvable_search_space:
     - rating_policy.default_prior
-    - rating_policy.case_rules.case_2.base_user_weight
-    - rating_policy.case_rules.case_2.base_item_weight
-    - rating_policy.case_rules.case_2.user_confidence_divisor
-    - rating_policy.case_rules.case_2.item_confidence_divisor
-    - rating_policy.case_rules.case_2.user_confidence_bonus
-    - rating_policy.case_rules.case_2.item_confidence_bonus
-    - rating_policy.case_rules.case_2.historical_user_review_blend_weight
-    - rating_policy.case_rules.case_2.historical_item_review_blend_weight
-    - rating_policy.case_rules.case_2.user_anchor_max_delta
-    - rating_policy.case_rules.case_2.item_anchor_max_delta
+
+    - rating_policy.evidence_weights.base_user_weight
+    - rating_policy.evidence_weights.base_item_weight
+    - rating_policy.evidence_weights.direct_review_weight
+
+    - rating_policy.confidence_policy.user_confidence_divisor
+    - rating_policy.confidence_policy.item_confidence_divisor
+    - rating_policy.confidence_policy.user_confidence_bonus
+    - rating_policy.confidence_policy.item_confidence_bonus
+    - rating_policy.confidence_policy.min_confidence_multiplier
+    - rating_policy.confidence_policy.max_confidence_multiplier
+
+    - rating_policy.history_blend_policy.user_history_blend_weight
+    - rating_policy.history_blend_policy.item_history_blend_weight
+
+    - rating_policy.anchor_policy.user_anchor_max_delta
+    - rating_policy.anchor_policy.item_anchor_max_delta
+
     - review_policy.sentiment_by_star
     - review_policy.case_review_guidance
 

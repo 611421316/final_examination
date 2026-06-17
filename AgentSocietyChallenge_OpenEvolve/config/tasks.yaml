@@ -1,19 +1,19 @@
 retrieve_data_task:
   description: >
-    Given user_id={user_id} and item_id={item_id}, call the tool
-    build_prediction_context(user_id, item_id) exactly once.
+    Return the already-computed deterministic prediction context below exactly:
 
-    Return the complete JSON context produced by the tool.
+    {prediction_context}
 
     Hard rules:
+    - Do not call tools unless prediction_context is empty.
     - Do not summarize the context.
     - Do not calculate stars yourself.
     - Do not generate the final review.
-    - Return the exact JSON object from the tool.
+    - Return the exact JSON object from prediction_context.
   expected_output: >
-    The exact JSON object returned by build_prediction_context. It must contain
-    case, user, item, review_style, evidence_summary, review_policy, and
-    predicted_stars.
+    The exact JSON object from prediction_context. It must contain case, user, item,
+    review_style, evidence_summary, review_policy, predicted_stars, and
+    rating_weight_trace if available.
   agent: exact_yelp_data_retriever
 
 detect_case_task:
@@ -118,7 +118,7 @@ predict_review_task:
       item before.
     - If user profile is missing, avoid user-specific claims.
     - If item profile is missing, avoid item-specific claims.
-      - Return raw JSON only.
+    - Return raw JSON only.
     - No markdown.
     - No prose before JSON.
     - No prose after JSON.

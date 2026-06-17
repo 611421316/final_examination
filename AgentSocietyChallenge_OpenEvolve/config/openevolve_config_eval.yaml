@@ -16,7 +16,7 @@ random_seed: 42
 
 diff_based_evolution: false
 language: "yaml"
-max_code_length: 12000
+max_code_length: 20000
 
 llm:
   models:
@@ -48,9 +48,9 @@ prompt:
     You may rewrite only the EVOLVE-BLOCK section.
 
     The policy controls:
-    - case-based rating rules for 8 cases
-    - weights for blending user average and item stars
-    - confidence divisors
+    - dynamic available-evidence weighting for all 8 cases
+    - base_user_weight, base_item_weight, and direct_review_weight
+    - confidence divisors and confidence multipliers
     - fallback prior
     - review tone guidance by star bucket
     - case-specific review guidance
@@ -61,9 +61,10 @@ prompt:
     - Do not remove rating_policy.
     - Do not remove review_policy.
     - Do not change top-level fixed_contract unless it is inside EVOLVE-BLOCK.
-    - If direct_review_exists is true, direct_review_stars must remain the strongest rating signal.
+    - If direct_review_exists is true, direct_review_stars must remain the strongest rating signal, but available user/item signals may still be blended.
+    - If a signal is missing, exclude its weight and renormalize remaining available weights.
     - Output stars must remain within [1.0, 5.0].
-    - Output stars must use 0.5 increments.
+    - Output stars must be rounded to exactly 1 decimal place using half-up rounding, e.g. 4.35 -> 4.4.
     - The final review must not invent unsupported facts.
     - Return the complete YAML file, not a patch.
 
