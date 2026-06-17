@@ -1,0 +1,193 @@
+# OpenEvolve initial program for rating-formula and review-guidance evolution.
+# Intended path: config/eval_evolving.yaml
+
+version: 1
+name: yelp_rating_review_eval_policy
+
+fixed_contract:
+  input_context:
+    required_fields:
+      - user
+      - item
+      - review_style
+      - case
+
+  output_contract:
+    final_json_only: true
+    required_output_fields:
+      stars: float
+      review: string
+    stars_range: [1.0, 5.0]
+    stars_step: 0.5
+
+  non_evolvable_rules:
+    - Do not change data file paths.
+    - Do not change lookup function names.
+    - Do not change CrewAI tool names.
+    - Do not change output JSON schema.
+    - Do not invent user, item, or review facts.
+    - If direct_review_exists is true, direct_review_stars must be the strongest rating signal.
+    - Final output stars must equal predicted_stars exactly.
+
+# EVOLVE-BLOCK-START
+
+rating_policy:
+  default_prior: 3.8
+
+  rounding:
+    mode: nearest_half
+    min_stars: 1.0
+    max_stars: 5.0
+
+  case_rules:
+    case_1:
+      condition: "user_exists=true,item_exists=true,direct_review_exists=true"
+      method: direct_review_stars
+      direct_review_weight: 1.0
+      explanation: >
+        Use the exact historical review stars because the user-item review exists.
+
+    case_2:
+      condition: "user_exists=true,item_exists=true,direct_review_exists=false"
+      method: weighted_user_item_blend
+
+      base_user_weight: 0.65
+      base_item_weight: 0.35
+
+      user_confidence_divisor: 50.0
+      item_confidence_divisor: 100.0
+
+      user_confidence_bonus: 0.25
+      item_confidence_bonus: 0.20
+
+      historical_user_review_blend_weight: 0.30
+      historical_user_review_min_count: 3
+
+      user_anchor_min_review_count: 30
+      user_anchor_max_delta: 0.70
+
+      explanation: >
+        Blend user average and item quality. Give stronger influence to user
+        history when the user has enough reviews.
+
+    case_3:
+      condition: "user_exists=false,item_exists=true,direct_review_exists=true"
+      method: direct_review_stars
+      direct_review_weight: 1.0
+      explanation: >
+        Use the exact historical review stars. Item context is used only for text grounding.
+
+    case_4:
+      condition: "user_exists=false,item_exists=true,direct_review_exists=false"
+      method: item_stars
+      item_weight: 1.0
+      explanation: >
+        With no user profile and no direct review, use item average stars.
+
+    case_5:
+      condition: "user_exists=true,item_exists=false,direct_review_exists=true"
+      method: direct_review_stars
+      direct_review_weight: 1.0
+      explanation: >
+        Use the exact historical review stars. User profile is used only for tone.
+
+    case_6:
+      condition: "user_exists=true,item_exists=false,direct_review_exists=false"
+      method: user_average_stars
+      user_weight: 1.0
+      explanation: >
+        With no item profile and no direct review, use user average stars.
+
+    case_7:
+      condition: "user_exists=false,item_exists=false,direct_review_exists=true"
+      method: direct_review_stars
+      direct_review_weight: 1.0
+      explanation: >
+        Use the exact historical review stars and avoid unsupported profile or item facts.
+
+    case_8:
+      condition: "user_exists=false,item_exists=false,direct_review_exists=false"
+      method: default_prior
+      explanation: >
+        No evidence is available, so use default prior.
+
+review_policy:
+  global_rules:
+    - 'Output only one JSON object: {"stars": <float>, "review": "<text>"}.'
+    - The output stars must equal predicted_stars exactly.
+    - Do not recalculate stars inside the final review agent.
+    - Do not mention IDs, formulas, tools, agents, YAML, or database fields.
+    - Do not invent dishes, prices, service details, locations, or user preferences.
+    - Use direct review evidence first when present.
+    - Keep the review natural, Yelp-like, and consistent with predicted_stars.
+
+  sentiment_by_star:
+    one_to_two:
+      range: [1.0, 2.0]
+      tone: clearly negative
+      guidance: >
+        Emphasize concrete disappointments. Mention positives only if supported
+        by evidence.
+
+    two_half_to_three:
+      range: [2.5, 3.0]
+      tone: mixed or lukewarm
+      guidance: >
+        Balance positives and negatives. Avoid sounding too enthusiastic.
+
+    three_half:
+      range: [3.5, 3.5]
+      tone: moderately positive with caveats
+      guidance: >
+        Mention good aspects while noting limitations.
+
+    four_to_five:
+      range: [4.0, 5.0]
+      tone: positive
+      guidance: >
+        Highlight strengths and satisfaction. Avoid unsupported specifics.
+
+  case_review_guidance:
+    case_1: >
+      Use direct review content and item facts. Preserve original sentiment direction.
+
+    case_2: >
+      Use user rating tendency and item categories or attributes. Do not imply
+      the user has reviewed this exact item before.
+
+    case_3: >
+      Use direct review content and item facts. Do not infer user history.
+
+    case_4: >
+      Use item facts only. Write a plausible review matching item average rating.
+
+    case_5: >
+      Use direct review content and user tendency. Avoid item-specific facts if item profile is missing.
+
+    case_6: >
+      Use user rating tendency only. Keep item details generic.
+
+    case_7: >
+      Use direct review content only. Avoid both user-profile and item-profile claims.
+
+    case_8: >
+      Use generic fallback review. Keep language neutral and low-specificity.
+
+optimization_notes:
+  primary_metric: star_accuracy
+  secondary_metric: review_fidelity
+
+  evolvable_search_space:
+    - rating_policy.default_prior
+    - rating_policy.case_rules.case_2.base_user_weight
+    - rating_policy.case_rules.case_2.base_item_weight
+    - rating_policy.case_rules.case_2.user_confidence_divisor
+    - rating_policy.case_rules.case_2.item_confidence_divisor
+    - rating_policy.case_rules.case_2.user_confidence_bonus
+    - rating_policy.case_rules.case_2.item_confidence_bonus
+    - rating_policy.case_rules.case_2.historical_user_review_blend_weight
+    - rating_policy.case_rules.case_2.user_anchor_max_delta
+    - review_policy.sentiment_by_star
+    - review_policy.case_review_guidance
+
+# EVOLVE-BLOCK-END

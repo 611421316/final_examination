@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from crewai.tools import tool
+import yaml
 
 
 # =============================================================================
@@ -65,6 +66,117 @@ _REVIEW_JSON_PATH = _DATA_DIR / "train_review.json"
 # =============================================================================
 # Basic helpers
 # =============================================================================
+
+_EVAL_POLICY_CACHE = None
+_EVAL_POLICY_CACHE_PATH = None
+
+
+def _get_eval_policy_path() -> Path:
+    """
+    During OpenEvolve:
+        OPENEVOLVE_EVAL_YAML=/tmp/tmpxxxxx.yaml
+
+    Normal run:
+        config/eval_evolving.yaml
+    """
+    env_path = os.environ.get("OPENEVOLVE_EVAL_YAML")
+    if env_path:
+        return Path(env_path)
+
+    return _PROJECT_ROOT / "config" / "eval_evolving.yaml"
+
+
+def _load_eval_policy() -> dict:
+    global _EVAL_POLICY_CACHE
+    global _EVAL_POLICY_CACHE_PATH
+
+    path = _get_eval_policy_path()
+
+    if _EVAL_POLICY_CACHE is not None and _EVAL_POLICY_CACHE_PATH == str(path):
+        return _EVAL_POLICY_CACHE
+
+    if not path.exists():
+        _EVAL_POLICY_CACHE = {}
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return _EVAL_POLICY_CACHE
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        if not isinstance(data, dict):
+            data = {}
+
+        _EVAL_POLICY_CACHE = data
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return data
+
+    except Exception as e:
+        print(f"[EVAL POLICY WARNING] Cannot load {path}: {e}", flush=True)
+        _EVAL_POLICY_CACHE = {}
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return {}
+
+_EVAL_POLICY_CACHE = None
+_EVAL_POLICY_CACHE_PATH = None
+
+
+def _get_eval_policy_path() -> Path:
+    """
+    During OpenEvolve:
+        OPENEVOLVE_EVAL_YAML=/tmp/tmpxxxxx.yaml
+
+    Normal run:
+        config/eval_evolving.yaml
+    """
+    env_path = os.environ.get("OPENEVOLVE_EVAL_YAML")
+    if env_path:
+        return Path(env_path)
+
+    return _PROJECT_ROOT / "config" / "eval_evolving.yaml"
+
+
+def _load_eval_policy() -> dict:
+    global _EVAL_POLICY_CACHE
+    global _EVAL_POLICY_CACHE_PATH
+
+    path = _get_eval_policy_path()
+
+    if _EVAL_POLICY_CACHE is not None and _EVAL_POLICY_CACHE_PATH == str(path):
+        return _EVAL_POLICY_CACHE
+
+    if not path.exists():
+        _EVAL_POLICY_CACHE = {}
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return _EVAL_POLICY_CACHE
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        if not isinstance(data, dict):
+            data = {}
+
+        _EVAL_POLICY_CACHE = data
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return data
+
+    except Exception as e:
+        print(f"[EVAL POLICY WARNING] Cannot load {path}: {e}", flush=True)
+        _EVAL_POLICY_CACHE = {}
+        _EVAL_POLICY_CACHE_PATH = str(path)
+        return {}
+
+def _policy_get(path: list[str], default: Any = None) -> Any:
+    data = _load_eval_policy()
+
+    cur = data
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+
+    return cur
 
 def _json_loads_safe(value: Any, default: Any = None) -> Any:
     if isinstance(value, (dict, list)):
@@ -397,62 +509,147 @@ def _summarize_review_style(reviews: list[dict], user_id: str, item_id: str) -> 
 
 def _compute_stars(user: dict, item: dict, style: dict) -> float:
     """
-    Deterministic predicted stars.
+    Deterministic predicted stars controlled by config/eval_evolving.yaml.
 
-    Full 8-case aware logic:
-    - If direct review exists, direct_review_stars is strongest.
-    - If user and item exist, blend user average and item stars.
-    - If only user exists, use user average.
-    - If only item exists, use item stars.
-    - If nothing exists, use default prior.
+    OpenEvolve mutates eval_evolving.yaml.
+    This function loads that policy and applies the evolved parameters.
     """
+    default_prior = _as_float(
+        _policy_get(["rating_policy", "default_prior"], 3.8),
+        3.8,
+    )
+
+    min_stars = _as_float(
+        _policy_get(["rating_policy", "rounding", "min_stars"], 1.0),
+        1.0,
+    )
+    max_stars = _as_float(
+        _policy_get(["rating_policy", "rounding", "max_stars"], 5.0),
+        5.0,
+    )
+
     direct_exists = bool(style.get("direct_review_exists"))
     direct_stars = style.get("direct_review_stars")
 
+    # Case 1, 3, 5, 7
+    # Direct review stars remain strongest evidence.
     if direct_exists and direct_stars is not None:
-        return float(_round_half(_clamp(_as_float(direct_stars, 3.8))))
+        return float(_round_half(_clamp(_as_float(direct_stars, default_prior), min_stars, max_stars)))
 
     user_exists = bool(user)
     item_exists = bool(item)
 
-    user_avg = _as_float(user.get("average_stars"), 3.8) if user_exists else 3.8
-    item_avg = _as_float(item.get("stars"), 3.8) if item_exists else 3.8
+    user_avg = _as_float(user.get("average_stars"), default_prior) if user_exists else default_prior
+    item_avg = _as_float(item.get("stars"), default_prior) if item_exists else default_prior
 
     user_count = _as_int(user.get("review_count"), 0) if user_exists else 0
     item_count = _as_int(item.get("review_count"), 0) if item_exists else 0
 
-    # Case 8: user missing, item missing, no direct review
+    # Case 8
     if not user_exists and not item_exists:
-        return 3.8
+        return float(_round_half(_clamp(default_prior, min_stars, max_stars)))
 
-    # Case 6: user exists, item missing, no direct review
+    # Case 6
     if user_exists and not item_exists:
-        return float(_round_half(_clamp(user_avg)))
+        return float(_round_half(_clamp(user_avg, min_stars, max_stars)))
 
-    # Case 4: user missing, item exists, no direct review
+    # Case 4
     if not user_exists and item_exists:
-        return float(_round_half(_clamp(item_avg)))
+        return float(_round_half(_clamp(item_avg, min_stars, max_stars)))
 
-    # Case 2: user exists, item exists, no direct review
-    user_conf = min(user_count / 50.0, 1.0)
-    item_conf = min(item_count / 100.0, 1.0)
+    # Case 2: evolved weighted blend
+    case2_path = ["rating_policy", "case_rules", "case_2"]
 
-    user_weight = 0.65 + 0.25 * user_conf
-    item_weight = 0.35 + 0.20 * item_conf
-
-    rating = (user_weight * user_avg + item_weight * item_avg) / (
-        user_weight + item_weight
+    base_user_weight = _as_float(
+        _policy_get(case2_path + ["base_user_weight"], 0.65),
+        0.65,
+    )
+    base_item_weight = _as_float(
+        _policy_get(case2_path + ["base_item_weight"], 0.35),
+        0.35,
     )
 
+    user_confidence_divisor = _as_float(
+        _policy_get(case2_path + ["user_confidence_divisor"], 50.0),
+        50.0,
+    )
+    item_confidence_divisor = _as_float(
+        _policy_get(case2_path + ["item_confidence_divisor"], 100.0),
+        100.0,
+    )
+
+    user_confidence_bonus = _as_float(
+        _policy_get(case2_path + ["user_confidence_bonus"], 0.25),
+        0.25,
+    )
+    item_confidence_bonus = _as_float(
+        _policy_get(case2_path + ["item_confidence_bonus"], 0.20),
+        0.20,
+    )
+
+    historical_user_review_blend_weight = _as_float(
+        _policy_get(case2_path + ["historical_user_review_blend_weight"], 0.30),
+        0.30,
+    )
+    historical_user_review_min_count = _as_int(
+        _policy_get(case2_path + ["historical_user_review_min_count"], 3),
+        3,
+    )
+
+    user_anchor_min_review_count = _as_int(
+        _policy_get(case2_path + ["user_anchor_min_review_count"], 30),
+        30,
+    )
+    user_anchor_max_delta = _as_float(
+        _policy_get(case2_path + ["user_anchor_max_delta"], 0.70),
+        0.70,
+    )
+
+    # Safety clamps so evolution cannot produce extreme broken values.
+    base_user_weight = _clamp(base_user_weight, 0.05, 5.0)
+    base_item_weight = _clamp(base_item_weight, 0.05, 5.0)
+
+    user_confidence_divisor = max(user_confidence_divisor, 1.0)
+    item_confidence_divisor = max(item_confidence_divisor, 1.0)
+
+    user_confidence_bonus = _clamp(user_confidence_bonus, 0.0, 3.0)
+    item_confidence_bonus = _clamp(item_confidence_bonus, 0.0, 3.0)
+
+    historical_user_review_blend_weight = _clamp(
+        historical_user_review_blend_weight,
+        0.0,
+        0.9,
+    )
+
+    user_anchor_max_delta = _clamp(user_anchor_max_delta, 0.0, 4.0)
+
+    user_conf = min(user_count / user_confidence_divisor, 1.0)
+    item_conf = min(item_count / item_confidence_divisor, 1.0)
+
+    user_weight = base_user_weight + user_confidence_bonus * user_conf
+    item_weight = base_item_weight + item_confidence_bonus * item_conf
+
+    denominator = user_weight + item_weight
+    if denominator <= 0:
+        rating = default_prior
+    else:
+        rating = (user_weight * user_avg + item_weight * item_avg) / denominator
+
     hist_avg = style.get("user_history_average_stars")
-    if hist_avg is not None and style.get("user_review_count_used", 0) >= 3:
-        rating = 0.70 * rating + 0.30 * float(hist_avg)
+    user_review_count_used = _as_int(style.get("user_review_count_used"), 0)
 
-    if user_count >= 30:
-        max_delta = 0.7
-        rating = max(user_avg - max_delta, min(user_avg + max_delta, rating))
+    if hist_avg is not None and user_review_count_used >= historical_user_review_min_count:
+        hist_avg = _as_float(hist_avg, rating)
+        w = historical_user_review_blend_weight
+        rating = (1.0 - w) * rating + w * hist_avg
 
-    return float(_round_half(_clamp(rating)))
+    if user_count >= user_anchor_min_review_count:
+        rating = max(
+            user_avg - user_anchor_max_delta,
+            min(user_avg + user_anchor_max_delta, rating),
+        )
+
+    return float(_round_half(_clamp(rating, min_stars, max_stars)))
 
 
 # =============================================================================
@@ -630,13 +827,17 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
     print("=" * 100, flush=True)
 
     style = _summarize_review_style(reviews, uid, iid)
-    predicted_stars = _compute_stars(user, item, style)
-
     case_info = _detect_case_from_flags(
         user_exists=bool(user),
         item_exists=bool(item),
         direct_review_exists=bool(style.get("direct_review_exists")),
     )
+    predicted_stars = _compute_stars(user, item, style)
+    calculation_trace = {
+        "policy_path": str(_get_eval_policy_path()),
+        "default_prior": _policy_get(["rating_policy", "default_prior"], 3.8),
+        "case_number": case_info["case_number"] if "case_info" in locals() else None,
+    }
 
     user_avg = _as_float(user.get("average_stars"), 3.8) if user else 3.8
     item_avg = _as_float(item.get("stars"), 3.8) if item else 3.8
@@ -650,6 +851,7 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
             "case_name": case_info["case_name"],
             "dominant_evidence": case_info["dominant_evidence"],
             "fallback_policy": case_info["fallback_policy"],
+            "calculation_trace": calculation_trace,
         },
         "user": {
             "average_stars": user_avg,
@@ -725,4 +927,3 @@ def determine_prediction_case(user_id: str, item_id: str) -> str:
 
     return json.dumps(result, ensure_ascii=False)
 
-    

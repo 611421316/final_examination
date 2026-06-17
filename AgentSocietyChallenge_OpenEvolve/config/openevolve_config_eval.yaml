@@ -1,0 +1,90 @@
+# OpenEvolve configuration for rating formula + review policy evolution
+# Initial program : config/eval_evolving.yaml
+# Evaluator       : openevolve_evaluator.py
+# Run command     :
+#   uv run --env-file .env python -m openevolve.cli \
+#     config/eval_evolving.yaml \
+#     openevolve_evaluator.py \
+#     --config config/openevolve_config_eval.yaml \
+#     --output config/openevolve_eval_output \
+#     --iterations 50
+
+max_iterations: 50
+checkpoint_interval: 5
+log_level: "INFO"
+random_seed: 42
+
+diff_based_evolution: false
+language: "yaml"
+max_code_length: 12000
+
+llm:
+  models:
+    - name: "minimaxai/minimax-m2.7"
+      weight: 1.0
+  api_base: "https://integrate.api.nvidia.com/v1"
+  api_key: null
+  temperature: 0.5
+  max_tokens: 4096
+  timeout: 120
+  retries: 3
+  retry_delay: 30
+
+prompt:
+  system_message: |
+    You are optimizing a YAML policy used by a deterministic Yelp review simulator.
+
+    Your goal is to improve:
+    1. star rating accuracy
+    2. review sentiment consistency
+    3. review factual grounding
+
+    You are NOT evolving CrewAI agent prompts.
+    You are NOT changing data lookup logic.
+    You are NOT changing tool names, file paths, or output JSON schema.
+
+    The evolved file is config/eval_evolving.yaml.
+
+    You may rewrite only the EVOLVE-BLOCK section.
+
+    The policy controls:
+    - case-based rating rules for 8 cases
+    - weights for blending user average and item stars
+    - confidence divisors
+    - fallback prior
+    - review tone guidance by star bucket
+    - case-specific review guidance
+
+    Critical rules:
+    - Keep valid YAML.
+    - Preserve EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
+    - Do not remove rating_policy.
+    - Do not remove review_policy.
+    - Do not change top-level fixed_contract unless it is inside EVOLVE-BLOCK.
+    - If direct_review_exists is true, direct_review_stars must remain the strongest rating signal.
+    - Output stars must remain within [1.0, 5.0].
+    - Output stars must use 0.5 increments.
+    - The final review must not invent unsupported facts.
+    - Return the complete YAML file, not a patch.
+
+  num_top_programs: 3
+  num_diverse_programs: 2
+  include_artifacts: false
+
+database:
+  population_size: 50
+  archive_size: 20
+  num_islands: 3
+  elite_selection_ratio: 0.2
+  exploitation_ratio: 0.7
+  migration_interval: 10
+  migration_rate: 0.1
+  feature_dimensions:
+    - "complexity"
+    - "diversity"
+
+evaluator:
+  timeout: 900
+  max_retries: 2
+  parallel_evaluations: 1
+  cascade_evaluation: false

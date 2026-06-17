@@ -9,6 +9,7 @@
 ITERS ?= 10
 TASKS ?= 5
 OUTPUT ?= config/openevolve_output
+EVAL_OUTPUT ?= config/openevolve_eval_output
 
 # ============================================================================
 # 環境
@@ -43,6 +44,31 @@ evolve:  ## 啟動 OpenEvolve 進化（可調 ITERS=N TASKS=N）
 	    openevolve_evaluator.py \
 	    --config config/openevolve_config.yaml \
 	    --output $(OUTPUT) \
+	    --iterations $(ITERS)
+.PHONY: evolve-eval
+.PHONY: evolve-eval-resume
+evolve-eval-resume:  ## 從 eval checkpoint 繼續（指定 CHECKPOINT=path）
+	@if [ -z "$(CHECKPOINT)" ]; then \
+	    echo "ERROR: 必須指定 CHECKPOINT 變數，例如：make evolve-eval-resume CHECKPOINT=config/openevolve_eval_output/checkpoints/checkpoint_10"; \
+	    exit 1; \
+	fi
+	OPENEVOLVE_NUM_TASKS=$(TASKS) \
+	OPENEVOLVE_EVAL_MODE=1 \
+	uv run --env-file .env python -m openevolve.cli \
+	    config/eval_evolving.yaml \
+	    openevolve_evaluator.py \
+	    --config config/openevolve_config_eval.yaml \
+	    --output $(EVAL_OUTPUT) \
+	    --checkpoint $(CHECKPOINT) \
+	    --iterations $(ITERS)
+evolve-eval:  ## 啟動 OpenEvolve 進化 rating formula + review policy（可調 ITERS=N TASKS=N）
+	OPENEVOLVE_NUM_TASKS=$(TASKS) \
+	OPENEVOLVE_EVAL_MODE=1 \
+	uv run --env-file .env python -m openevolve.cli \
+	    config/eval_evolving.yaml \
+	    openevolve_evaluator.py \
+	    --config config/openevolve_config_eval.yaml \
+	    --output $(EVAL_OUTPUT) \
 	    --iterations $(ITERS)
 
 .PHONY: evolve-resume
