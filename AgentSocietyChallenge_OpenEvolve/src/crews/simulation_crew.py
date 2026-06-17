@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
@@ -39,7 +39,7 @@ def find_project_root() -> Path:
 _PROJECT_ROOT = find_project_root()
 
 
-def extract_json_object(text: str) -> str:
+def extract_json_object(text: Any) -> str:
     if not isinstance(text, str):
         text = str(text)
 
@@ -112,16 +112,31 @@ def safe_json_loads(value: Any) -> Dict[str, Any]:
         return {}
 
 
-def normalize_final_output(result: Any) -> Dict[str, Any]:
+def _round_half(value: float) -> float:
+    return round(value * 2.0) / 2.0
+
+
+def fallback_review(stars: float) -> str:
+    if stars >= 4.0:
+        return "Overall, this was a positive experience with enough good points to make it worth recommending."
+    if stars >= 3.0:
+        return "Overall, it was a reasonable experience, with some good parts and a few things that could be better."
+    return "Overall, the experience was disappointing, and there were enough issues to make it hard to recommend."
+
+
+def normalize_final_output(result: Any, predicted_stars: Optional[float] = None) -> Dict[str, Any]:
     parsed = safe_json_loads(result)
 
-    stars = parsed.get("stars", parsed.get("predicted_stars", 4.0))
-    try:
-        stars = float(stars)
-    except Exception:
-        stars = 4.0
+    if predicted_stars is not None:
+        stars = float(predicted_stars)
+    else:
+        stars = parsed.get("stars", parsed.get("predicted_stars", 4.0))
+        try:
+            stars = float(stars)
+        except Exception:
+            stars = 4.0
 
-    stars = max(1.0, min(5.0, stars))
+    stars = max(1.0, min(5.0, _round_half(stars)))
 
     review = parsed.get("review", parsed.get("generated_review", ""))
     if not isinstance(review, str):
@@ -129,13 +144,38 @@ def normalize_final_output(result: Any) -> Dict[str, Any]:
 
     review = review.strip()
     if not review:
-        review = (
-            "Overall, this was a solid experience. The place had enough positives "
-            "to make it worth a visit, even if there were a few small things that "
-            "kept it from being perfect."
-        )
+        review = fallback_review(stars)
 
     return {"stars": stars, "review": review}
+
+
+def get_prediction_context(user_id: str, item_id: str) -> Dict[str, Any]:
+    if build_prediction_context is None:
+        raise ImportError(
+            "Cannot import build_prediction_context from exact_lookup_tools. "
+            f"Original error: {_IMPORT_ERROR}"
+        )
+
+    try:
+        raw = build_prediction_context.run(user_id=user_id, item_id=item_id)
+    except TypeError:
+        try:
+            raw = build_prediction_context.run({"user_id": user_id, "item_id": item_id})
+        except Exception:
+            raw = build_prediction_context(user_id=user_id, item_id=item_id)
+    except Exception:
+        raw = build_prediction_context(user_id=user_id, item_id=item_id)
+
+    return safe_json_loads(raw)
+
+
+def get_predicted_stars(user_id: str, item_id: str) -> float:
+    try:
+        context = get_prediction_context(user_id, item_id)
+        return float(context.get("predicted_stars", 3.8))
+    except Exception as exc:
+        print(f"[PREDICTED_STARS WARNING] {exc}", flush=True)
+        return 3.8
 
 
 @CrewBase
@@ -219,10 +259,7 @@ class SimulationCrew:
         return Task(
             config=self.tasks_config["analyze_user_behavior_task"],
             agent=self.yelp_user_behavior_analyst(),
-            context=[
-                self.retrieve_data_task(),
-                self.detect_case_task(),
-            ],
+            context=[self.retrieve_data_task(), self.detect_case_task()],
         )
 
     @task
@@ -273,18 +310,21 @@ class SimulationCrew:
 
 
 def run_simulation(user_id: str, item_id: str) -> Dict[str, Any]:
-    result = SimulationCrew().crew().kickoff(
-        inputs={
-            "user_id": user_id,
-            "item_id": item_id,
-        }
-    )
-    return normalize_final_output(result)
+    predicted_stars = get_predicted_stars(user_id, item_id)
+    try:
+        result = SimulationCrew().crew().kickoff(inputs={"user_id": user_id, "item_id": item_id})
+        return normalize_final_output(result, predicted_stars=predicted_stars)
+    except Exception as exc:
+        print(f"[SIMULATION WARNING] Crew failed for user_id={user_id}, item_id={item_id}: {exc}", flush=True)
+        return normalize_final_output({}, predicted_stars=predicted_stars)
 
 
 if __name__ == "__main__":
-    output = run_simulation(
-        user_id="sample_user_id",
-        item_id="sample_item_id",
-    )
+    import sys
+
+    if len(sys.argv) >= 3:
+        output = run_simulation(user_id=sys.argv[1], item_id=sys.argv[2])
+    else:
+        output = run_simulation(user_id="sample_user_id", item_id="sample_item_id")
+
     print(json.dumps(output, ensure_ascii=False, indent=2))
