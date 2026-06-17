@@ -510,8 +510,21 @@ def _summarize_review_style(reviews: list[dict], user_id: str, item_id: str) -> 
 
 
 def _compute_stars(user: dict, item: dict, style: dict) -> float:
-    if style.get("direct_review_exists") and style.get("direct_review_stars") is not None:
-        return float(style["direct_review_stars"])
+    """
+    Compute deterministic predicted stars.
+
+    8-case aware logic:
+    - If direct review exists, direct_review_stars is strongest.
+    - If user and item exist, blend user average and item stars.
+    - If only user exists, use user average.
+    - If only item exists, use item stars.
+    - If nothing exists, use default prior.
+    """
+    direct_exists = bool(style.get("direct_review_exists"))
+    direct_stars = style.get("direct_review_stars")
+
+    if direct_exists and direct_stars is not None:
+        return float(_round_half(_clamp(_as_float(direct_stars, 3.8))))
 
     user_exists = bool(user)
     item_exists = bool(item)
@@ -522,12 +535,19 @@ def _compute_stars(user: dict, item: dict, style: dict) -> float:
     user_count = _as_int(user.get("review_count"), 0) if user_exists else 0
     item_count = _as_int(item.get("review_count"), 0) if item_exists else 0
 
+    # Case 8: user missing, item missing, no direct review
     if not user_exists and not item_exists:
         return 3.8
 
+    # Case 6: user exists, item missing, no direct review
+    if user_exists and not item_exists:
+        return float(_round_half(_clamp(user_avg)))
+
+    # Case 4: user missing, item exists, no direct review
     if not user_exists and item_exists:
         return float(_round_half(_clamp(item_avg)))
 
+    # Case 2: user exists, item exists, no direct review
     user_conf = min(user_count / 50.0, 1.0)
     item_conf = min(item_count / 100.0, 1.0)
 
@@ -600,6 +620,74 @@ def lookup_reviews_by_item(item_id: str) -> str:
     """
     return _lookup_reviews_by_user_and_item_impl(user_id="", item_id=item_id)
 
+def _detect_case_from_flags(
+    user_exists: bool,
+    item_exists: bool,
+    direct_review_exists: bool,
+) -> dict:
+    if user_exists and item_exists and direct_review_exists:
+        return {
+            "case_number": 1,
+            "case_name": "Case 1: user exists, item exists, direct historical review exists",
+            "dominant_evidence": "direct_review",
+            "fallback_policy": "use direct review first, then user and item context",
+        }
+
+    if user_exists and item_exists and not direct_review_exists:
+        return {
+            "case_number": 2,
+            "case_name": "Case 2: user exists, item exists, no direct historical review",
+            "dominant_evidence": "user_and_item_profiles",
+            "fallback_policy": "combine user behavior and item quality",
+        }
+
+    if not user_exists and item_exists and direct_review_exists:
+        return {
+            "case_number": 3,
+            "case_name": "Case 3: user missing, item exists, direct historical review exists",
+            "dominant_evidence": "direct_review_and_item_profile",
+            "fallback_policy": "use direct review first, then item context",
+        }
+
+    if not user_exists and item_exists and not direct_review_exists:
+        return {
+            "case_number": 4,
+            "case_name": "Case 4: user missing, item exists, no direct historical review",
+            "dominant_evidence": "item_profile",
+            "fallback_policy": "use item stars and category context",
+        }
+
+    if user_exists and not item_exists and direct_review_exists:
+        return {
+            "case_number": 5,
+            "case_name": "Case 5: user exists, item missing, direct historical review exists",
+            "dominant_evidence": "direct_review_and_user_profile",
+            "fallback_policy": "use direct review first, then user behavior",
+        }
+
+    if user_exists and not item_exists and not direct_review_exists:
+        return {
+            "case_number": 6,
+            "case_name": "Case 6: user exists, item missing, no direct historical review",
+            "dominant_evidence": "user_profile",
+            "fallback_policy": "use user rating tendency and avoid item-specific details",
+        }
+
+    if not user_exists and not item_exists and direct_review_exists:
+        return {
+            "case_number": 7,
+            "case_name": "Case 7: user missing, item missing, direct historical review exists",
+            "dominant_evidence": "direct_review_only",
+            "fallback_policy": "use direct review evidence only and avoid unsupported profile or item facts",
+        }
+
+    return {
+        "case_number": 8,
+        "case_name": "Case 8: user missing, item missing, no direct historical review",
+        "dominant_evidence": "default_prior",
+        "fallback_policy": "use generic fallback and avoid unsupported details",
+    }
+
 @tool("build_prediction_context")
 def build_prediction_context(user_id: str, item_id: str) -> str:
     """
@@ -617,6 +705,11 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
 
     style = _summarize_review_style(reviews, uid, iid)
     predicted_stars = _compute_stars(user, item, style)
+    case_info = _detect_case_from_flags(
+    user_exists=bool(user),
+    item_exists=bool(item),
+    direct_review_exists=bool(style.get("direct_review_exists")),
+)
 
     user_avg = _as_float(user.get("average_stars"), 3.8) if user else 3.8
     item_avg = _as_float(item.get("stars"), 3.8) if item else 3.8
@@ -626,6 +719,10 @@ def build_prediction_context(user_id: str, item_id: str) -> str:
             "user_exists": bool(user),
             "item_exists": bool(item),
             "direct_review_exists": bool(style.get("direct_review_exists")),
+            "case_number": case_info["case_number"],
+            "case_name": case_info["case_name"],
+            "dominant_evidence": case_info["dominant_evidence"],
+            "fallback_policy": case_info["fallback_policy"],
         },
         "user": {
             "average_stars": user_avg,
@@ -665,11 +762,15 @@ def determine_prediction_case(user_id: str, item_id: str) -> str:
     """
     Determine prediction case for exact user_id and item_id.
 
-    Cases:
+    Full 8-case logic:
     - Case 1: user exists, item exists, direct historical review exists.
     - Case 2: user exists, item exists, no direct historical review.
-    - Case 3: user missing, item exists.
-    - Case 4: user missing, item missing.
+    - Case 3: user missing, item exists, direct historical review exists.
+    - Case 4: user missing, item exists, no direct historical review.
+    - Case 5: user exists, item missing, direct historical review exists.
+    - Case 6: user exists, item missing, no direct historical review.
+    - Case 7: user missing, item missing, direct historical review exists.
+    - Case 8: user missing, item missing, no direct historical review.
     """
     uid = user_id.strip().strip("'\"")
     iid = item_id.strip().strip("'\"")
@@ -685,24 +786,51 @@ def determine_prediction_case(user_id: str, item_id: str) -> str:
 
     if user_exists and item_exists and direct_review_exists:
         case_number = 1
-        case_name = "User exists, item exists, direct historical review exists"
+        case_name = "Case 1: user exists, item exists, direct historical review exists"
         dominant_evidence = "direct_review"
-        fallback_policy = "Use direct review rating and closely follow its sentiment/style."
+        fallback_policy = "use direct review first, then user and item context"
+
     elif user_exists and item_exists and not direct_review_exists:
         case_number = 2
-        case_name = "User exists, item exists, no direct historical review"
-        dominant_evidence = "user_average_and_item_stars"
-        fallback_policy = "Blend user average_stars with item stars; use user style examples if available."
-    elif not user_exists and item_exists:
+        case_name = "Case 2: user exists, item exists, no direct historical review"
+        dominant_evidence = "user_and_item_profiles"
+        fallback_policy = "combine user behavior and item quality"
+
+    elif not user_exists and item_exists and direct_review_exists:
         case_number = 3
-        case_name = "User missing, item exists"
-        dominant_evidence = "item_stars"
-        fallback_policy = "Use item stars and generic restaurant review style."
-    else:
+        case_name = "Case 3: user missing, item exists, direct historical review exists"
+        dominant_evidence = "direct_review_and_item_profile"
+        fallback_policy = "use direct review first, then item context"
+
+    elif not user_exists and item_exists and not direct_review_exists:
         case_number = 4
-        case_name = "User missing, item missing"
+        case_name = "Case 4: user missing, item exists, no direct historical review"
+        dominant_evidence = "item_profile"
+        fallback_policy = "use item stars and category context"
+
+    elif user_exists and not item_exists and direct_review_exists:
+        case_number = 5
+        case_name = "Case 5: user exists, item missing, direct historical review exists"
+        dominant_evidence = "direct_review_and_user_profile"
+        fallback_policy = "use direct review first, then user behavior"
+
+    elif user_exists and not item_exists and not direct_review_exists:
+        case_number = 6
+        case_name = "Case 6: user exists, item missing, no direct historical review"
+        dominant_evidence = "user_profile"
+        fallback_policy = "use user rating tendency and avoid item-specific details"
+
+    elif not user_exists and not item_exists and direct_review_exists:
+        case_number = 7
+        case_name = "Case 7: user missing, item missing, direct historical review exists"
+        dominant_evidence = "direct_review_only"
+        fallback_policy = "use direct review evidence only and avoid unsupported profile or item facts"
+
+    else:
+        case_number = 8
+        case_name = "Case 8: user missing, item missing, no direct historical review"
         dominant_evidence = "default_prior"
-        fallback_policy = "Use neutral default rating and avoid unsupported details."
+        fallback_policy = "use generic fallback and avoid unsupported details"
 
     result = {
         "case_number": case_number,

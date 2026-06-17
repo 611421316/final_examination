@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 from typing import Any, Dict
 
@@ -21,14 +20,6 @@ else:
 
 
 def find_project_root() -> Path:
-    """
-    Find project root that contains config/agents.yaml and config/tasks.yaml.
-
-    This fixes the error:
-    File not found: src/crews/config/agents.yaml
-    File not found: src/crews/config/tasks.yaml
-    KeyError: 'retrieve_data_task'
-    """
     current = Path(__file__).resolve()
 
     for parent in [current.parent, *current.parents]:
@@ -49,7 +40,6 @@ _PROJECT_ROOT = find_project_root()
 
 
 def extract_json_object(text: str) -> str:
-    """Return the first balanced JSON object found in text."""
     if not isinstance(text, str):
         text = str(text)
 
@@ -93,7 +83,6 @@ def extract_json_object(text: str) -> str:
 
 
 def safe_json_loads(value: Any) -> Dict[str, Any]:
-    """Safely convert CrewAI output into a dictionary."""
     if value is None:
         return {}
 
@@ -124,7 +113,6 @@ def safe_json_loads(value: Any) -> Dict[str, Any]:
 
 
 def normalize_final_output(result: Any) -> Dict[str, Any]:
-    """Normalize final Crew result to {'stars': float, 'review': str}."""
     parsed = safe_json_loads(result)
 
     stars = parsed.get("stars", parsed.get("predicted_stars", 4.0))
@@ -152,15 +140,6 @@ def normalize_final_output(result: Any) -> Dict[str, Any]:
 
 @CrewBase
 class SimulationCrew:
-    """
-    Sequential Yelp simulation Crew.
-
-    Correct tool policy:
-    - retrieve_data_task agent has exactly one real tool: build_prediction_context.
-    - all downstream agents have no tools.
-    - no fake none/None tool is attached anywhere.
-    """
-
     agents_config = str(_PROJECT_ROOT / "config" / "agents.yaml")
     tasks_config = str(_PROJECT_ROOT / "config" / "tasks.yaml")
 
@@ -294,7 +273,6 @@ class SimulationCrew:
 
 
 def run_simulation(user_id: str, item_id: str) -> Dict[str, Any]:
-    """Run the Crew and return final JSON-compatible dict."""
     result = SimulationCrew().crew().kickoff(
         inputs={
             "user_id": user_id,

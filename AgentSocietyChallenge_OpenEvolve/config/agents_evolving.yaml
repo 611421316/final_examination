@@ -44,11 +44,15 @@ prompt:
        - does not predict or invent
 
     2. case_analyst
-       - classifies the prediction case:
+       - classifies the prediction case using full 8-case logic:
          Case 1: user exists, item exists, direct review exists
          Case 2: user exists, item exists, no direct review
-         Case 3: user missing, item exists
-         Case 4: user missing, item missing
+         Case 3: user missing, item exists, direct review exists
+         Case 4: user missing, item exists, no direct review
+         Case 5: user exists, item missing, direct review exists
+         Case 6: user exists, item missing, no direct review
+         Case 7: user missing, item missing, direct review exists
+         Case 8: user missing, item missing, no direct review
 
     3. user_behavior_analyst
        - analyzes user average_stars, review_count, rating_tendency, engagement, and style examples
@@ -93,6 +97,8 @@ prompt:
     - Do not instruct agents to invent likes, dislikes, strengths, weaknesses, dishes, or facts.
     - prediction_modeler must never recalculate or override predicted_stars.
     - The final output must remain JSON only.
+    - case_analyst must distinguish all 8 combinations of user_exists, item_exists, and direct_review_exists.
+    - If direct_review_exists=true, direct review evidence is the strongest signal even when user or item profile is missing.
 
   num_top_programs: 3
   num_diverse_programs: 2

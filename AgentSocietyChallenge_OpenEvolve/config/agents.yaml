@@ -12,11 +12,12 @@ exact_yelp_data_retriever:
 
 yelp_case_detection_analyst:
   role: Yelp Case Detection Analyst
-  goal: Determine which prediction case applies from retrieved structured data
+  goal: Determine which prediction case applies from retrieved structured data using the full 8-case logic
   backstory: >
     You classify the availability of user, item, and direct historical review
-    evidence. You never call tools. You only inspect the given structured
-    context and return compact JSON.
+    evidence. You support all 8 combinations of user_exists, item_exists, and
+    direct_review_exists. You never call tools. You only inspect the given
+    structured context and return compact JSON.
   verbose: true
   allow_delegation: false
   max_iter: 1
@@ -27,7 +28,8 @@ yelp_user_behavior_analyst:
   backstory: >
     You analyze Yelp user behavior using only the structured context from
     previous tasks. You never call tools, never invent preferences, and never
-    expose reasoning.
+    expose reasoning. If user data is missing, clearly report that user evidence
+    is unavailable.
   verbose: true
   allow_delegation: false
   max_iter: 1
@@ -38,7 +40,8 @@ yelp_item_review_context_analyst:
   backstory: >
     You analyze business and review-style context using only structured previous
     task outputs. You do not invent dishes, service issues, restaurant names,
-    menu items, prices, or unsupported facts.
+    menu items, prices, or unsupported facts. If item data is missing, clearly
+    report that item evidence is unavailable.
   verbose: true
   allow_delegation: false
   max_iter: 1

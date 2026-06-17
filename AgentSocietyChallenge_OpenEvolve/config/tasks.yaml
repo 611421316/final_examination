@@ -43,14 +43,19 @@ detect_case_task:
   description: >
     Determine the prediction case using retrieve_data_task output only.
 
-    CASE DEFINITIONS:
+    FULL 8-CASE DEFINITIONS:
     - Case 1: user exists, item exists, direct historical review exists.
     - Case 2: user exists, item exists, no direct historical review.
-    - Case 3: user missing, item exists.
-    - Case 4: user missing, item missing.
+    - Case 3: user missing, item exists, direct historical review exists.
+    - Case 4: user missing, item exists, no direct historical review.
+    - Case 5: user exists, item missing, direct historical review exists.
+    - Case 6: user exists, item missing, no direct historical review.
+    - Case 7: user missing, item missing, direct historical review exists.
+    - Case 8: user missing, item missing, no direct historical review.
 
     STRICT RULES:
     - Use retrieve_data_task output only.
+    - Read case.user_exists, case.item_exists, and case.direct_review_exists exactly.
     - Do not call any Action.
     - Do not use tools.
     - Do not write "Thought:".
@@ -63,14 +68,30 @@ detect_case_task:
     Decision logic:
     - If user_exists=true, item_exists=true, direct_review_exists=true => case_number=1.
     - If user_exists=true, item_exists=true, direct_review_exists=false => case_number=2.
-    - If user_exists=false, item_exists=true => case_number=3.
-    - If user_exists=false, item_exists=false => case_number=4.
+    - If user_exists=false, item_exists=true, direct_review_exists=true => case_number=3.
+    - If user_exists=false, item_exists=true, direct_review_exists=false => case_number=4.
+    - If user_exists=true, item_exists=false, direct_review_exists=true => case_number=5.
+    - If user_exists=true, item_exists=false, direct_review_exists=false => case_number=6.
+    - If user_exists=false, item_exists=false, direct_review_exists=true => case_number=7.
+    - If user_exists=false, item_exists=false, direct_review_exists=false => case_number=8.
+
+    Evidence priority:
+    - If direct_review_exists=true, direct review evidence is strongest.
+    - If direct_review_exists=false and user_exists=true and item_exists=true, use user and item context.
+    - If only user_exists=true, use user context and avoid item-specific details.
+    - If only item_exists=true, use item context and avoid user-specific behavior.
+    - If no evidence exists, use generic fallback and avoid unsupported details.
 
   expected_output: >
     {
       "case_number": 2,
       "case_name": "Case 2: user exists, item exists, no direct historical review",
-      "dominant_evidence": "user_exists_and_item_exists_without_direct_review",
+      "flags": {
+        "user_exists": true,
+        "item_exists": true,
+        "direct_review_exists": false
+      },
+      "dominant_evidence": "user_and_item_profiles",
       "fallback_policy": "use predicted_stars exactly; use available user and item context for review text only"
     }
   agent: yelp_case_detection_analyst
@@ -95,6 +116,7 @@ analyze_user_behavior_task:
     - Use user.review_count as the confidence signal.
     - Use useful, funny, cool, and fans as engagement signals.
     - Use review_style.style_examples only as writing-style evidence, not as factual preferences.
+    - If user_exists=false, clearly state that user behavior evidence is unavailable.
     - Output only one valid JSON object.
 
     Confidence guide:
@@ -102,11 +124,13 @@ analyze_user_behavior_task:
     - 10 <= review_count < 100: medium
     - 1 <= review_count < 10: low
     - review_count = 0 or missing: very_low
+    - user_exists=false: unavailable
 
   expected_output: >
     {
       "rating_tendency": "moderate",
       "user_confidence": "high",
+      "user_evidence_available": true,
       "engagement_signals": {
         "review_count": 1158,
         "fans": 102,
@@ -135,16 +159,17 @@ analyze_item_review_context_task:
     - Do not write "Thought:".
     - Do not write "Action:".
     - Do not write "Action Input:".
-    - Use item.stars and item.review_count as main business signals when item exists.
+    - Use item.stars and item.review_count as main business signals when item_exists=true.
     - Use categories and attributes only when present.
     - Use review_style.direct_review_exists and review_style.direct_review_stars as strongest evidence when present.
     - Do not invent dishes, service issues, business names, menu items, prices, or facts.
-    - If item is missing, say item context is limited.
+    - If item_exists=false, clearly state that item context is unavailable.
     - Output only one valid JSON object.
 
   expected_output: >
     {
       "item_quality_signal": {
+        "item_evidence_available": true,
         "item_stars": 4.0,
         "item_review_count": 229,
         "predicted_stars": 4.0
@@ -197,7 +222,10 @@ predict_review_task:
     - Generate one natural Yelp-style review.
     - Only use safe supported details from previous outputs.
     - Do not invent unsupported specific dishes, prices, employee names, or factual claims.
-    - If item details are limited, write a general restaurant review.
+    - If direct_review_exists=true, align the review sentiment with direct review evidence.
+    - If user evidence is missing, do not describe user habits or preferences.
+    - If item evidence is missing, do not describe item-specific facts.
+    - If both user and item are missing and no direct review exists, write a generic review.
     - Output only one valid JSON object.
 
     FINAL FORMAT:
