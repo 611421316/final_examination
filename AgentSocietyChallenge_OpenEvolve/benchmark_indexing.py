@@ -60,7 +60,7 @@ def run_indexing_benchmark():
     
     benchmark_single_tool('Filtered_User', 'data/filtered_user.json', 1)
     benchmark_single_tool('Filtered_Item', 'data/filtered_item.json', 1)
-    benchmark_single_tool('Filtered_Review', 'data/test_review.json', 1)
+    benchmark_single_tool('Filtered_Review', 'data/train_review.json', 1)
 
 if __name__ == "__main__":
     run_indexing_benchmark()

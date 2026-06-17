@@ -1,294 +1,312 @@
-from chromadb.config import Settings
-import os
+import json
+import re
 from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-CHROMA_DIR = _PROJECT_ROOT / "lmdb_cache" / "my_chroma"
-os.environ["CREWAI_STORAGE_DIR"] = str(CHROMA_DIR)
-os.makedirs(CHROMA_DIR, exist_ok=True)
-from crewai import Agent, Crew, Process, Task, LLM
-from crewai_tools import JSONSearchTool, SerperDevTool
+from typing import Any, Dict
 
-serper_tool = SerperDevTool(
-    name="search_internet",
-    description=(
-        "Search the internet for general restaurant review trends, Yelp rating behavior, "
-        "customer satisfaction factors, and public background information."
-    )
-)
-# === LLM Provider Selection ===
-llm_provider = os.getenv("LLM_PROVIDER", "ollama").lower()
-print("Here is provider: ", llm_provider)
-if llm_provider == "nvidia":
-    default_llm = LLM(
-        model=f"openai/{os.getenv('NVIDIA_MODEL_NAME', 'meta/llama-3.1-8b-instruct')}",
-        api_key=os.getenv("NVIDIA_API_KEY", ""),
-        base_url=os.getenv("NVIDIA_API_BASE", "https://integrate.api.nvidia.com/v1")
-    )
-else:
-    default_llm = LLM(model="ollama/phi3")
-
+from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
-from crewai.agents.agent_builder.base_agent import BaseAgent
-from crewai.tools import tool
-from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
-from typing import List
-from src.tools.exact_lookup_tools import lookup_user_by_id, lookup_item_by_id, lookup_reviews_by_user_and_item, none_tool, lowercase_none_tool
+
+try:
+    from src.tools.exact_lookup_tools import build_prediction_context
+except Exception:
+    try:
+        from exact_lookup_tools import build_prediction_context
+    except Exception as exc:
+        build_prediction_context = None
+        _IMPORT_ERROR = exc
+    else:
+        _IMPORT_ERROR = None
+else:
+    _IMPORT_ERROR = None
 
 
-import os
+def find_project_root() -> Path:
+    """
+    Find project root that contains config/agents.yaml and config/tasks.yaml.
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+    This fixes the error:
+    File not found: src/crews/config/agents.yaml
+    File not found: src/crews/config/tasks.yaml
+    KeyError: 'retrieve_data_task'
+    """
+    current = Path(__file__).resolve()
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-NVIDIA_MODEL_NAME = os.getenv("NVIDIA_MODEL_NAME", "meta/llama-3.1-8b-instruct")
+    for parent in [current.parent, *current.parents]:
+        agents_path = parent / "config" / "agents.yaml"
+        tasks_path = parent / "config" / "tasks.yaml"
 
-# Keep OPENAI_API_KEY set so Pydantic validation in crewai_tools doesn't crash.
-# Do NOT set OPENAI_API_BASE — that would redirect Embedchain's local
-# sentence-transformer embedding calls to Nvidia (which returns 404).
-# The default_llm object already carries the Nvidia base_url for actual LLM calls.
-os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+        if agents_path.exists() and tasks_path.exists():
+            return parent
 
-# Embedding Model for converting text to numerical representations
-embedding_model = HuggingFaceEmbeddings(
-    model_name='BAAI/bge-small-en-v1.5'
-)
-rag_config = {
-    "embedding_model": {
-        "provider": "sentence-transformer",
-        "config": {
-            "model_name": "BAAI/bge-small-en-v1.5"
-        }
-    }
-}
+    cwd = Path.cwd()
+    if (cwd / "config" / "agents.yaml").exists() and (cwd / "config" / "tasks.yaml").exists():
+        return cwd
 
-# === Step 3: Configure RAG Tools (CrewAI RAG Tools) ===
-def create_rag_tool(json_path: str, collection_name: str, config: dict, name: str, description: str) -> JSONSearchTool:
-    from crewai.utilities.paths import db_storage_path
-    from crewai_tools.tools.json_search_tool.json_search_tool import FixedJSONSearchToolSchema
-    import sqlite3
-    import os
-    
-    collection_exists = False
-    # Use actual path where CrewAI stores ChromaDB (macOS: ~/Library/Application Support/<AppName>)
-    db_file = str(Path(db_storage_path()) / "chroma.sqlite3")
-    print(f"Check db_file: {db_file}")
-    
-    if os.path.exists(db_file):
-        print("db_file exists")
+    return cwd
+
+
+_PROJECT_ROOT = find_project_root()
+
+
+def extract_json_object(text: str) -> str:
+    """Return the first balanced JSON object found in text."""
+    if not isinstance(text, str):
+        text = str(text)
+
+    text = text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+
+    start = text.find("{")
+    if start < 0:
+        return "{}"
+
+    depth = 0
+    in_string = False
+    escape = False
+
+    for idx in range(start, len(text)):
+        ch = text[idx]
+
+        if escape:
+            escape = False
+            continue
+
+        if ch == "\\":
+            escape = True
+            continue
+
+        if ch == '"':
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : idx + 1]
+
+    return text[start:]
+
+
+def safe_json_loads(value: Any) -> Dict[str, Any]:
+    """Safely convert CrewAI output into a dictionary."""
+    if value is None:
+        return {}
+
+    if isinstance(value, dict):
+        return value
+
+    if hasattr(value, "json_dict") and value.json_dict:
+        return value.json_dict
+
+    if hasattr(value, "pydantic") and value.pydantic:
         try:
-            # Check native sqlite3 for existing collection to heavily avoid 100% JSON text synchronous chunking bottleneck
-            # and avoid ChromaDB singleton initialization conflicts with CrewAI's internal Settings
-            conn = sqlite3.connect(db_file)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM collections WHERE name = ?", (collection_name,))
-            if cursor.fetchone() is not None:
-                collection_exists = True
-            conn.close()
+            return value.pydantic.model_dump()
         except Exception:
             pass
-    print("[DEBUG] FINAL COLLECTION CHECK")
-    print(f"Collection Exists: {collection_exists}")
-    if collection_exists:
-        print(f"Tool {collection_name} exists")
-        print(f"[DEBUG] Using collection: {collection_name}")
-        print(f"[DEBUG] JSON source: {json_path}")
-        tool = JSONSearchTool(collection_name=collection_name, config=config)
-        tool.args_schema = FixedJSONSearchToolSchema
-    else:
-        tool = JSONSearchTool(json_path=json_path, collection_name=collection_name, config=config)
-        print(f"Tool {collection_name} created")
-        print(f"[DEBUG] Using collection: {collection_name}")
-        print(f"[DEBUG] JSON source: {json_path}")
-    
-    tool.name = name
-    tool.description = description
-    return tool
 
-user_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/user.json',
-    collection_name='benchmark_true_fresh_index_Filtered_User_3',
-    config=rag_config,
-    name="search_user_profile_data",
-    description=(
-    "Search user profile information and statistics using semantic similarity. "
-    "This tool can retrieve a user's name, review_count, average_stars, yelping_since, "
-    "elite, friends, fans, and compliment metrics. "
+    if hasattr(value, "raw"):
+        value = value.raw
 
-    "Input MUST be a natural language search_query string. For specific users, ALWAYS include the exact 'user_id' inside the query. "
+    text = str(value).strip()
+    text = text.replace("{{", "{").replace("}}", "}")
+    json_text = extract_json_object(text)
 
-    "Example queries:\n"
-    "- 'Find profile statistics and average_stars where user_id is _BcWyKQL16ndpBdggh2kNA'\n"
-    "- 'What is the review_count and elite status where user_id is XgE3E2Sm-nhtTS_9PjtJsQ?'\n"
-    
-    "Do NOT pass raw user_id or JSON objects directly as the query."
-    )
-)
+    try:
+        parsed = json.loads(json_text)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
 
-item_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/item.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Item_3',
-    config=rag_config,
-    name="search_restaurant_feature_data",
-    description=(
-    "Search general business and item information using item_id or natural language queries. "
-    "This tool can retrieve business categories, stars, city, state, hours, review_count, and attributes. "
 
-    "For specific businesses, ALWAYS include the exact 'item_id' inside the search_query. "
+def normalize_final_output(result: Any) -> Dict[str, Any]:
+    """Normalize final Crew result to {'stars': float, 'review': str}."""
+    parsed = safe_json_loads(result)
 
-    "Example queries:\n"
-    "- 'Find business information where item_id is uBDXcXlLR9IuRV1N2m0SPQ'\n"
-    "- 'What are the categories, hours, and stars where item_id is -JIeZE7f926mnRNcdnYk6Q?'\n"
-    "- 'Find highly rated sushi restaurants or auto repair shops'\n"
-    
-    "NEVER pass raw JSON objects."
-)
+    stars = parsed.get("stars", parsed.get("predicted_stars", 4.0))
+    try:
+        stars = float(stars)
+    except Exception:
+        stars = 4.0
 
-)
+    stars = max(1.0, min(5.0, stars))
 
-review_rag_tool = create_rag_tool(
-    json_path='dummy_dataset/review.json',
-    collection_name='benchmark_true_fresh_index_Filtered_Review_3',
-    config=rag_config,
-    name="search_historical_reviews_data",
-    description=(
-    "Search historical review data and texts using semantic similarity. "
-    "This tool retrieves detailed review information including the text, stars, date, "
-    "useful, funny, and cool metrics for specific users or items/businesses. "
+    review = parsed.get("review", parsed.get("generated_review", ""))
+    if not isinstance(review, str):
+        review = str(review)
 
-    "Input MUST be a natural language search_query string. "
-    "To find reviews for a specific user or business, ALWAYS include the exact 'user_id' or 'item_id' inside the query. "
+    review = review.strip()
+    if not review:
+        review = (
+            "Overall, this was a solid experience. The place had enough positives "
+            "to make it worth a visit, even if there were a few small things that "
+            "kept it from being perfect."
+        )
 
-    "Example queries:\n"
-    "- 'Find past reviews where user_id is _BcWyKQL16ndpBdggh2kNA about food quality and service'\n"
-    "- 'What do the 5-star reviews say where item_id is uBDXcXlLR9IuRV1N2m0SPQ?'\n"
-    "- 'Search for negative text mentioning bad service where item_id is 9zlIJ7Q5W4AENjpGgaNSsQ'\n"
-    
-    "Do NOT pass raw user_id, item_id, or JSON objects directly as the query."
-)
+    return {"stars": stars, "review": review}
 
-)
-# === Step 2: Inject Global Background Knowledge (CrewAI Knowledge) ===
-with open('docs/Yelp Data Translation.md', 'r', encoding='utf-8') as f:
-    schema_content = f.read()
-
-schema_knowledge = StringKnowledgeSource(
-    content=schema_content,
-    metadata={"source": "Yelp Schema Definition"}
-)
 
 @CrewBase
-class SimulationCrew():
-    """Yelp Recommendation Crew"""
-    agents_config = str(_PROJECT_ROOT / 'config' / 'agents.yaml')
-    tasks_config  = str(_PROJECT_ROOT / 'config' / 'tasks.yaml')
-    agents: List[BaseAgent]
-    tasks: List[Task]
+class SimulationCrew:
+    """
+    Sequential Yelp simulation Crew.
 
-    # === Step 6: System Assembly & Tool Binding ===
-    # Mount specific RAG Tools onto specific Agents
+    Correct tool policy:
+    - retrieve_data_task agent has exactly one real tool: build_prediction_context.
+    - all downstream agents have no tools.
+    - no fake none/None tool is attached anywhere.
+    """
+
+    agents_config = str(_PROJECT_ROOT / "config" / "agents.yaml")
+    tasks_config = str(_PROJECT_ROOT / "config" / "tasks.yaml")
+
     @agent
-    def internet_researcher(self) -> Agent:
+    def exact_yelp_data_retriever(self) -> Agent:
+        if build_prediction_context is None:
+            raise ImportError(
+                "Cannot import build_prediction_context from exact_lookup_tools. "
+                f"Original error: {_IMPORT_ERROR}"
+            )
+
         return Agent(
-            config=self.agents_config['internet_researcher'],
-            tools=[serper_tool],
+            config=self.agents_config["exact_yelp_data_retriever"],
+            tools=[build_prediction_context],
+            allow_delegation=False,
+            max_iter=2,
             verbose=True,
-            llm=default_llm,
-            max_rpm=15
         )
 
     @agent
-    def user_analyst(self) -> Agent:
+    def yelp_case_detection_analyst(self) -> Agent:
         return Agent(
-            config=self.agents_config['user_analyst'], # type: ignore[index]
-            tools=[lookup_user_by_id, user_rag_tool, none_tool, lowercase_none_tool],
+            config=self.agents_config["yelp_case_detection_analyst"],
+            tools=[],
+            allow_delegation=False,
+            max_iter=1,
             verbose=True,
-            llm=default_llm,
-            max_rpm=10
         )
 
     @agent
-    def item_analyst(self) -> Agent:
+    def yelp_user_behavior_analyst(self) -> Agent:
         return Agent(
-            config=self.agents_config['item_analyst'], # type: ignore[index]
-            tools=[lookup_item_by_id, item_rag_tool, none_tool, lowercase_none_tool],
+            config=self.agents_config["yelp_user_behavior_analyst"],
+            tools=[],
+            allow_delegation=False,
+            max_iter=1,
             verbose=True,
-            llm=default_llm,
-            max_rpm=10
         )
 
     @agent
-    def review_analyst(self) -> Agent:
+    def yelp_item_review_context_analyst(self) -> Agent:
         return Agent(
-            config=self.agents_config['review_analyst'], # type: ignore[index]
-            tools=[lookup_reviews_by_user_and_item, review_rag_tool, none_tool, lowercase_none_tool],
+            config=self.agents_config["yelp_item_review_context_analyst"],
+            tools=[],
+            allow_delegation=False,
+            max_iter=1,
             verbose=True,
-            llm=default_llm,
-            max_rpm=10
         )
 
     @agent
-    def prediction_modeler(self) -> Agent:
+    def deterministic_yelp_review_simulator(self) -> Agent:
         return Agent(
-            config=self.agents_config['prediction_modeler'], # type: ignore[index]
+            config=self.agents_config["deterministic_yelp_review_simulator"],
+            tools=[],
+            allow_delegation=False,
+            max_iter=1,
             verbose=True,
-            llm=default_llm,
-            max_rpm=10
         )
 
     @task
-    def analyze_user_task(self) -> Task:
+    def retrieve_data_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_user_task'], # type: ignore[index]
+            config=self.tasks_config["retrieve_data_task"],
+            agent=self.exact_yelp_data_retriever(),
         )
 
     @task
-    def internet_researcher_task(self) -> Task:
+    def detect_case_task(self) -> Task:
         return Task(
-            config=self.tasks_config['internet_research_task'],
-            agent=self.internet_researcher(),
+            config=self.tasks_config["detect_case_task"],
+            agent=self.yelp_case_detection_analyst(),
+            context=[self.retrieve_data_task()],
         )
 
     @task
-    def analyze_item_task(self) -> Task:
+    def analyze_user_behavior_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_item_task'], 
+            config=self.tasks_config["analyze_user_behavior_task"],
+            agent=self.yelp_user_behavior_analyst(),
+            context=[
+                self.retrieve_data_task(),
+                self.detect_case_task(),
+            ],
         )
 
     @task
-    def analyze_reviews_task(self) -> Task:
+    def analyze_item_review_context_task(self) -> Task:
         return Task(
-            config=self.tasks_config['analyze_reviews_task'], 
+            config=self.tasks_config["analyze_item_review_context_task"],
+            agent=self.yelp_item_review_context_analyst(),
+            context=[
+                self.retrieve_data_task(),
+                self.detect_case_task(),
+                self.analyze_user_behavior_task(),
+            ],
         )
 
     @task
     def predict_review_task(self) -> Task:
         return Task(
-            config=self.tasks_config['predict_review_task'], # type: ignore[index]
-            output_file='report.json'
+            config=self.tasks_config["predict_review_task"],
+            agent=self.deterministic_yelp_review_simulator(),
+            context=[
+                self.retrieve_data_task(),
+                self.detect_case_task(),
+                self.analyze_user_behavior_task(),
+                self.analyze_item_review_context_task(),
+            ],
         )
 
     @crew
     def crew(self) -> Crew:
         return Crew(
             agents=[
-                self.user_analyst(),
-                self.item_analyst(),
-                self.review_analyst(),
-                self.internet_researcher(),
-                self.prediction_modeler(),
+                self.exact_yelp_data_retriever(),
+                self.yelp_case_detection_analyst(),
+                self.yelp_user_behavior_analyst(),
+                self.yelp_item_review_context_analyst(),
+                self.deterministic_yelp_review_simulator(),
             ],
             tasks=[
-                self.analyze_user_task(),
-                self.analyze_item_task(),
-                self.internet_researcher_task(),
-                self.analyze_reviews_task(),
+                self.retrieve_data_task(),
+                self.detect_case_task(),
+                self.analyze_user_behavior_task(),
+                self.analyze_item_review_context_task(),
                 self.predict_review_task(),
-        ],
+            ],
             process=Process.sequential,
-            knowledge_sources=[schema_knowledge],
-            embedder=rag_config["embedding_model"],
-            verbose=True
+            verbose=True,
         )
+
+
+def run_simulation(user_id: str, item_id: str) -> Dict[str, Any]:
+    """Run the Crew and return final JSON-compatible dict."""
+    result = SimulationCrew().crew().kickoff(
+        inputs={
+            "user_id": user_id,
+            "item_id": item_id,
+        }
+    )
+    return normalize_final_output(result)
+
+
+if __name__ == "__main__":
+    output = run_simulation(
+        user_id="sample_user_id",
+        item_id="sample_item_id",
+    )
+    print(json.dumps(output, ensure_ascii=False, indent=2))

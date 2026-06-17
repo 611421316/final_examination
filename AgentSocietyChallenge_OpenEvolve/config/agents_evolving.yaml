@@ -1,125 +1,117 @@
-# EVOLVE-BLOCK-START
-internet_researcher:
-  role: >
-    Restaurant Review Behavior Researcher
-  goal: >
-    Provide evidence-based insights about how user personality traits, business characteristics, and contextual factors influence star ratings and review writing.
-  backstory: >
-    You are a research scientist specializing in online review platforms and consumer behavior psychology.
-    You understand how factors like review volume, rating variance, business age, user experience level, and seasonal effects influence review behavior.
-    
-    IMPORTANT GUIDELINES:
-    - Focus on general psychological and behavioral patterns, NOT specific data about given users or businesses
-    - Provide actionable insights that help predict rating tendencies
-    - Keep your output concise and directly applicable to prediction tasks
-  llm: openai/minimaxai/minimax-m2.7
+# Optimized OpenEvolve configuration for 5-agent CrewAI Yelp simulation
+# Initial program : config/agents.yaml
+# Evaluator       : openevolve_evaluator.py
+#
+# Run command:
+#   uv run --env-file .env python -m openevolve.cli \
+#       config/agents.yaml \
+#       openevolve_evaluator.py \
+#       --config config/openevolve_config.yaml \
+#       --output config/openevolve_output \
+#       --iterations 50
 
-user_analyst:
-  role: >
-    Yelp User Behavior Analyst
-  goal: >
-    Extract comprehensive user profile statistics and behavioral patterns for user {user_id}.
-  backstory: >
-    You are a skilled data analyst who extracts meaningful patterns from user profiles.
-    You use lookup_user_by_id to retrieve the user's average_stars, review_count, and useful/funny/cool vote counts.
-    
-    DEEP ANALYSIS REQUIRED:
-    - Calculate confidence weight: min(review_count / 50, 1.0) — users with 50+ reviews are highly predictable
-    - Identify rating tendency: compare average_stars to global mean (3.7) to classify as harsh (≤3.2), moderate (3.3-4.1), or generous (≥4.2)
-    - Estimate rating consistency: users with low variance tend to be more predictable
-    - Determine engagement level: ratio of total votes to review_count indicates review quality/engagement
-    - Analyze elite status or verified badges which correlate with review consistency
-  llm: openai/minimaxai/minimax-m2.7
+max_iterations: 50
+checkpoint_interval: 5
+log_level: "INFO"
+random_seed: 42
 
-item_analyst:
-  role: >
-    Yelp Business Analyst
-  goal: >
-    Extract comprehensive business characteristics for {item_id}.
-  backstory: >
-    You are a restaurant industry analyst who understands business quality indicators.
-    You use lookup_item_by_id to retrieve the business's stars, review_count, and attributes.
-    
-    ANALYSIS FRAMEWORK:
-    - Business confidence: min(review_count / 100, 1.0) — businesses with 100+ reviews have stable ratings
-    - Quality signal: business stars compared to category average (if available)
-    - Identify if business is trending: recent reviews may differ from historical average
-    - Price tier correlation: higher priced businesses tend to receive more critical ratings
-    - Category-specific expectations: fast food vs fine dining have different baseline expectations
-  llm: openai/minimaxai/minimax-m2.7
+diff_based_evolution: false
+language: "text"
+max_code_length: 12000
 
-review_analyst:
-  role: >
-    Yelp Review Content Analyst
-  goal: >
-    Retrieve and analyze review histories for user {user_id} and business {item_id}.
-  backstory: >
-    You are an expert linguistic analyst specializing in review text patterns.
-    You use lookup_reviews_by_user_and_item to retrieve historical reviews.
-    
-    PATTERN EXTRACTION:
-    - Calculate typical review length (word count mean and std dev)
-    - Identify vocabulary sophistication level (technical food terms, emotional language, descriptive adjectives)
-    - Map sentiment expression patterns: how does user convey satisfaction/dissatisfaction?
-    - Extract frequently used phrases, food items, service descriptors
-    - Note structural patterns: does user use lists, narrative, bullet points?
-    - Track tone consistency: enthusiastic, neutral, critical, or mixed
-    - Identify first-person usage frequency ("I", "my", "me")
-  llm: openai/minimaxai/minimax-m2.7
+llm:
+  models:
+    - name: "minimaxai/minimax-m2.7"
+      weight: 1.0
+  api_base: "https://integrate.api.nvidia.com/v1"
+  api_key: null
+  temperature: 0.5
+  max_tokens: 4096
+  timeout: 120
+  retries: 3
+  retry_delay: 30
 
-prediction_modeler:
-  role: >
-    Adaptive Yelp Rating & Review Predictor
-  goal: >
-    Predict the exact star rating (float from 1.0 to 5.0 with one decimal) and craft an authentic review text that user {user_id} would write for business {item_id}.
-  backstory: >
-    You are a quantitative behavioral psychologist and text generation expert. Your methodology combines statistical modeling with behavioral inference.
-    
-    ADAPTIVE RATING ALGORITHM:
-    1. CONFIDENCE-WEIGHTED BLEND:
-       - user_weight = min(review_count / 50, 1.0) * 0.7 + 0.3 (ensures minimum 30% weight to user tendency)
-       - business_weight = min(review_count / 100, 1.0) * 0.6 + 0.4 (ensures minimum 40% weight to business quality)
-       - Base score = (user_weight * user_avg + business_weight * business_stars) / (user_weight + business_weight)
-    
-    2. BIAS CORRECTION:
-       - If user_avg < 3.5 (harsh rater): adjust toward user tendency by 10%
-       - If user_avg > 4.2 (generous rater): adjust toward user tendency by 10%
-       - If |user_avg - business_stars| > 1.5: heavily favor user history (they know their preferences)
-    
-    3. CONTEXTUAL ADJUSTMENT:
-       - New business (<20 reviews): favor user average by 20%
-       - Experienced user (>30 reviews): favor user average by 15%
-       - High-engagement user (many votes): user pattern is reliable, favor by 10%
-    
-    4. BOUNDARY: Clamp to [1.0, 5.0], round to one decimal
-    
-    TEXT GENERATION PROTOCOL:
-    - Target length: mean_word_count ± 1 std dev
-    - Match vocabulary level from user's sophistication assessment
-    - Include 2-3 characteristic phrases or food items from user's history
-    - Preserve user's typical sentence structure and tone
-    - Match sentiment intensity to user's rating tendency (harsh raters use stronger criticism)
-    - Maintain first-person narrative ratio observed in user's reviews
-  llm: openai/minimaxai/minimax-m2.7
+prompt:
+  system_message: |
+    You are optimizing the EVOLVE-BLOCK of a CrewAI YAML file for a multi-agent Yelp rating and review simulation task.
 
-reviewer:
-  role: >
-    Prediction Quality Auditor
-  goal: >
-    Evaluate whether the predicted star rating and review text are consistent, realistic, and well-grounded in the retrieved data.
-  backstory: >
-    You are a meticulous quality assurance specialist for review prediction systems.
-    
-    SCORED EVALUATION (1-5 scale, must score minimum 4 for each):
-    1. RATING ACCURACY: Predicted star within 0.3 of user's likely true rating given business quality
-    2. REVIEW AUTHENTICITY: Text reflects user's unique voice, not generic template
-    3. LENGTH FIDELITY: Word count within standard deviation of user's typical review length
-    4. VOCABULARY ALIGNMENT: Sophistication level matches user's historical patterns
-    5. SENTIMENT COHERENCE: Star rating and text sentiment are aligned (5-star = positive language)
-    
-    CORRECTION PROTOCOL (when any score < 4):
-    - Identify which dimension failed
-    - Provide specific adjustment recommendation
-    - Suggest whether prediction needs re-generation with different parameters
-  llm: openai/minimaxai/minimax-m2.7
-# EVOLVE-BLOCK-END
+    The system uses exactly five agents:
+
+    1. data_retriever
+       - must call build_prediction_context
+       - build_prediction_context is the only tool in the main path
+       - preserves exact returned fields
+       - does not predict or invent
+
+    2. case_analyst
+       - classifies the prediction case:
+         Case 1: user exists, item exists, direct review exists
+         Case 2: user exists, item exists, no direct review
+         Case 3: user missing, item exists
+         Case 4: user missing, item missing
+
+    3. user_behavior_analyst
+       - analyzes user average_stars, review_count, rating_tendency, engagement, and style examples
+
+    4. item_review_context_analyst
+       - analyzes item stars, review_count, categories, attributes, direct review evidence, and safe review details
+
+    5. prediction_modeler
+       - must use predicted_stars exactly
+       - must output valid JSON only
+       - must not recalculate stars
+       - must not reveal reasoning
+
+    The deterministic Python tool build_prediction_context already handles:
+    - exact user lookup
+    - exact item lookup
+    - review lookup
+    - direct review matching
+    - case flags
+    - weighted rating prediction
+    - fallback defaults
+    - style examples
+
+    Optimization goals:
+    - improve star rating accuracy
+    - preserve predicted_stars exactly
+    - improve review authenticity
+    - reduce hallucination
+    - keep outputs compact
+    - maintain a real multi-agent structure
+    - keep final JSON valid
+
+    Rules:
+    - Return the complete YAML file with EVOLVE-BLOCK-START and EVOLVE-BLOCK-END markers.
+    - Keep YAML valid.
+    - Do not change llm fields.
+    - Do not add new agents.
+    - Do not remove the multi-agent structure.
+    - Do not add unavailable tools.
+    - Do not add fake none/None tools.
+    - Do not reintroduce internet search into the main path.
+    - Do not instruct agents to invent likes, dislikes, strengths, weaknesses, dishes, or facts.
+    - prediction_modeler must never recalculate or override predicted_stars.
+    - The final output must remain JSON only.
+
+  num_top_programs: 3
+  num_diverse_programs: 2
+  include_artifacts: false
+
+database:
+  population_size: 50
+  archive_size: 20
+  num_islands: 3
+  elite_selection_ratio: 0.2
+  exploitation_ratio: 0.7
+  migration_interval: 10
+  migration_rate: 0.1
+  feature_dimensions:
+    - "complexity"
+    - "diversity"
+
+evaluator:
+  timeout: 900
+  max_retries: 2
+  parallel_evaluations: 1
+  cascade_evaluation: false

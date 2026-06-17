@@ -187,7 +187,7 @@ uv run python src/first_crew/benchmark_indexing.py
 |-----------------|---------|------|
 | `benchmark_true_fresh_index_Filtered_User_1` | `data/filtered_user.json` | 使用者特徵（偏好、平均星數等） |
 | `benchmark_true_fresh_index_Filtered_Item_1` | `data/filtered_item.json` | 餐廳/商家特徵（分類、地點等） |
-| `benchmark_true_fresh_index_Filtered_Review_1` | `data/test_review.json` | 歷史評論全文 |
+| `benchmark_true_fresh_index_Filtered_Review_1` | `data/train_review.json` | 歷史評論全文 |
 
 **Embedding 模型：** `BAAI/bge-small-en-v1.5`（384 維向量，本地 CPU 即可運行）
 

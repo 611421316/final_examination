@@ -187,7 +187,7 @@ uv run python src/first_crew/benchmark_indexing.py
 |-----------------|-----------|-------------|
 | `benchmark_true_fresh_index_Filtered_User_1` | `data/filtered_user.json` | User profiles (preferences, average stars, etc.) |
 | `benchmark_true_fresh_index_Filtered_Item_1` | `data/filtered_item.json` | Restaurant/business features (categories, location, etc.) |
-| `benchmark_true_fresh_index_Filtered_Review_1` | `data/test_review.json` | Full historical review texts |
+| `benchmark_true_fresh_index_Filtered_Review_1` | `data/train_review.json` | Full historical review texts |
 
 **Embedding Model:** `BAAI/bge-small-en-v1.5` (384-dimensional vectors, runs on CPU)
 
