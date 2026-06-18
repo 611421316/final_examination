@@ -15,7 +15,7 @@ from crewai_simulation_agent import CrewAISimulationAgent
 
 # 整個 simulation 的 hard timeout（秒）。超時則回傳 fallback fitness 讓 OpenEvolve 繼續。
 # 預設 15 分鐘，可由 OPENEVOLVE_SIM_TIMEOUT env var 覆寫。
-SIM_TIMEOUT_SEC = int(os.environ.get("OPENEVOLVE_SIM_TIMEOUT", 900))
+SIM_TIMEOUT_SEC = int(os.environ.get("OPENEVOLVE_SIM_TIMEOUT", 2000))
 
 # ---------------------------------------------------------------------------
 # Lazy singleton: Simulator is expensive to initialize (loads LMDB dataset).
@@ -137,6 +137,11 @@ def _prepare_random_task_dirs(
         shutil.copy2(gt_path, os.path.join(temp_gt_dir, gt_name))
 
         print(f" - task={task_name} | groundtruth={gt_name}")
+
+    print(f"[Evaluator] Temp task dir: {temp_task_dir}")
+    print(f"[Evaluator] Temp groundtruth dir: {temp_gt_dir}")
+    print(f"[Evaluator] Temp tasks: {sorted(os.listdir(temp_task_dir))}")
+    print(f"[Evaluator] Temp groundtruth: {sorted(os.listdir(temp_gt_dir))}")
 
     return temp_task_dir, temp_gt_dir
 
