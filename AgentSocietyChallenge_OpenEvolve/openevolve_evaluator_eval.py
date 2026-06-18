@@ -54,7 +54,7 @@ def evaluate(program_path: str) -> dict:
     simulator = _get_simulator()
     try:
         # 1. Tell CrewAISimulationAgent to load this YAML config for the run
-        os.environ["OPENEVOLVE_YAML"] = program_path
+        os.environ["OPENEVOLVE_EVAL_YAML"] = program_path
 
         num_tasks = int(os.environ.get("OPENEVOLVE_NUM_TASKS", 5))
         print(f"\n[Evaluator] Running simulation: {program_path}  (tasks={num_tasks}, timeout={SIM_TIMEOUT_SEC}s)")
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     # Lightweight integration test — write initial YAML to a temp file,
     # then call evaluate() exactly as OpenEvolve would.
     import tempfile
-    yaml_path = os.path.join(project_dir, "config", "agents_evolving.yaml")
+    yaml_path = os.path.join(project_dir, "config", "eval_evolving.yaml")
     if os.path.exists(yaml_path):
         with open(yaml_path, "r", encoding="utf-8") as f:
             content = f.read()

@@ -25,3 +25,10 @@ report.md
 *.log
 
 AgentSocietyChallenge_w_CrewAI/data/my_chroma/
+AgentSocietyChallenge_OpenEvolve/config/openevolve_task_output/
+AgentSocietyChallenge_OpenEvolve/config/openevolve_output_develop_weight_eval/
+AgentSocietyChallenge_OpenEvolve/config/openevolve_agent_output/
+AgentSocietyChallenge_OpenEvolve/config/openevolve_eval_output/
+AgentSocietyChallenge_OpenEvolve/lmdb_cache/
+
+

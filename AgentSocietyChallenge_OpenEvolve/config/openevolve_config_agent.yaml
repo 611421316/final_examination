@@ -17,7 +17,7 @@ random_seed: 42
 # (diff-based mode generates SEARCH/REPLACE patches that easily corrupt YAML structure)
 diff_based_evolution: false
 language: "text"
-max_code_length: 11000
+max_code_length: 20000
 
 # ── LLM ───────────────────────────────────────────────────────────────────────
 llm:
