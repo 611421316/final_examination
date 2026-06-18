@@ -92,7 +92,11 @@ def evaluate(program_path: str) -> dict:
             f"overall_quality={overall_quality:.4f}  →  combined_score={overall_quality:.4f}"
         )
 
-        return {"combined_score": float(overall_quality)}
+        return {
+            "combined_score": float(overall_quality),
+            "preference_estimation": float(pref_estimation),
+            "review_generation": float(review_generation),
+        }
 
     except Exception as e:
         print(f"[Evaluator] ❌ Error during evaluation: {e}")

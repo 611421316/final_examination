@@ -92,13 +92,21 @@ def evaluate(program_path: str) -> dict:
             f"overall_quality={overall_quality:.4f}  →  combined_score={overall_quality:.4f}"
         )
 
-        return {"combined_score": float(overall_quality)}
+        return {
+            "combined_score": float(overall_quality),
+            "preference_estimation": float(pref_estimation),
+            "review_generation": float(review_generation),
+        }
 
     except Exception as e:
         print(f"[Evaluator] ❌ Error during evaluation: {e}")
         import traceback
         traceback.print_exc()
-        return {"combined_score": 0.0}
+        return {
+            "combined_score": 0.0,
+            "preference_estimation": 0.0,
+            "review_generation": 0.0,
+        }
 
 
 if __name__ == "__main__":
