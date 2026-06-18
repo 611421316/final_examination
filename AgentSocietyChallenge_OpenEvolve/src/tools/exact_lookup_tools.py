@@ -4,9 +4,9 @@ Exact lookup tools for Yelp data + deterministic rating policy + grounded review
 Research-quality version for CrewAI + OpenEvolve.
 
 Data sources only:
-- src/data/filtered_user.json
-- src/data/filtered_item.json
-- src/data/train_review.json
+- dummy_dataset/user.json
+- dummy_dataset/item.json
+- dummy_dataset/review.json
 
 No dummy dataset.
 No ChromaDB fallback.
@@ -54,23 +54,27 @@ from crewai.tools import tool
 
 def _find_project_root() -> Path:
     """
-    Find project root by locating src/data.
+    Find project root by locating the new dummy_dataset folder first,
+    then falling back to the old src/data layout for compatibility.
 
-    Expected structure:
+    Expected current structure:
         AgentSocietyChallenge_OpenEvolve/
-        └── src/
-            └── data/
-                ├── filtered_user.json
-                ├── filtered_item.json
-                └── train_review.json
+        └── dummy_dataset/
+            ├── user.json
+            ├── item.json
+            └── review.json
     """
     current = Path(__file__).resolve()
 
     for parent in [current.parent, *current.parents]:
+        if (parent / "dummy_dataset").exists():
+            return parent
         if (parent / "src" / "data").exists():
             return parent
 
     cwd = Path.cwd()
+    if (cwd / "dummy_dataset").exists():
+        return cwd
     if (cwd / "src" / "data").exists():
         return cwd
 
@@ -78,11 +82,11 @@ def _find_project_root() -> Path:
 
 
 _PROJECT_ROOT = _find_project_root()
-_DATA_DIR = _PROJECT_ROOT / "src" / "data"
+_DATA_DIR = _PROJECT_ROOT / "dummy_dataset"
 
-_USER_JSON_PATH = _DATA_DIR / "filtered_user.json"
-_ITEM_JSON_PATH = _DATA_DIR / "filtered_item.json"
-_REVIEW_JSON_PATH = _DATA_DIR / "train_review.json"
+_USER_JSON_PATH = _DATA_DIR / "user.json"
+_ITEM_JSON_PATH = _DATA_DIR / "item.json"
+_REVIEW_JSON_PATH = _DATA_DIR / "review.json"
 
 
 # =============================================================================
@@ -1132,7 +1136,7 @@ def _minimal_item_context(item: dict) -> dict:
 
 @tool("lookup_user_by_id")
 def lookup_user_by_id(user_id: str) -> str:
-    """Look up a user's complete profile by exact user_id from src/data/filtered_user.json."""
+    """Look up a user's complete profile by exact user_id from dummy_dataset/user.json."""
     uid = str(user_id or "").strip().strip("'\"")
     data = _get_user_exact_dict(uid)
     if data:
@@ -1142,7 +1146,7 @@ def lookup_user_by_id(user_id: str) -> str:
 
 @tool("lookup_item_by_id")
 def lookup_item_by_id(item_id: str) -> str:
-    """Look up a business/item profile by exact item_id or business_id from src/data/filtered_item.json."""
+    """Look up a business/item profile by exact item_id or business_id from dummy_dataset/item.json."""
     iid = str(item_id or "").strip().strip("'\"")
     data = _get_item_exact_dict(iid)
     if data:
@@ -1152,19 +1156,19 @@ def lookup_item_by_id(item_id: str) -> str:
 
 @tool("lookup_reviews_by_user_and_item")
 def lookup_reviews_by_user_and_item(user_id: str = "", item_id: str = "") -> str:
-    """Look up direct historical reviews by exact user_id and item_id from src/data/train_review.json."""
+    """Look up direct historical reviews by exact user_id and item_id from dummy_dataset/review.json."""
     return _lookup_reviews_impl(user_id=user_id, item_id=item_id, limit=60)
 
 
 @tool("lookup_reviews_by_user")
 def lookup_reviews_by_user(user_id: str) -> str:
-    """Look up recent historical reviews by exact user_id from src/data/train_review.json."""
+    """Look up recent historical reviews by exact user_id from dummy_dataset/review.json."""
     return _lookup_reviews_impl(user_id=user_id, item_id="", limit=60)
 
 
 @tool("lookup_reviews_by_item")
 def lookup_reviews_by_item(item_id: str) -> str:
-    """Look up recent historical reviews by exact item_id or business_id from src/data/train_review.json."""
+    """Look up recent historical reviews by exact item_id or business_id from dummy_dataset/review.json."""
     return _lookup_reviews_impl(user_id="", item_id=item_id, limit=60)
 
 
