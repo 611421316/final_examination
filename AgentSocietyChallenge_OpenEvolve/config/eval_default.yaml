@@ -39,7 +39,7 @@ fixed_contract:
 # EVOLVE-BLOCK-START
 
 rating_policy:
-  default_prior: 3.5
+  default_prior: 3.8
 
   rounding:
     mode: one_decimal_half_up
@@ -48,39 +48,39 @@ rating_policy:
     decimal_places: 1
 
   evidence_weights:
-    base_user_weight: 0.11
-    base_item_weight: 0.14
-    direct_review_weight: 0.75
+    base_user_weight: 0.20
+    base_item_weight: 0.20
+    direct_review_weight: 0.60
 
   confidence_policy:
-    user_confidence_divisor: 43.0
-    item_confidence_divisor: 78.0
+    user_confidence_divisor: 50.0
+    item_confidence_divisor: 100.0
 
-    user_confidence_bonus: 0.36
-    item_confidence_bonus: 0.31
+    user_confidence_bonus: 0.25
+    item_confidence_bonus: 0.20
 
-    min_confidence_multiplier: 0.68
-    max_confidence_multiplier: 1.32
+    min_confidence_multiplier: 0.70
+    max_confidence_multiplier: 1.30
 
   history_blend_policy:
-    user_history_blend_weight: 0.23
-    item_history_blend_weight: 0.19
+    user_history_blend_weight: 0.25
+    item_history_blend_weight: 0.20
 
     user_history_min_count: 3
     item_history_min_count: 3
 
   anchor_policy:
-    user_anchor_min_review_count: 25
-    user_anchor_max_delta: 0.48
+    user_anchor_min_review_count: 30
+    user_anchor_max_delta: 0.70
 
-    item_anchor_min_review_count: 58
-    item_anchor_max_delta: 0.78
+    item_anchor_min_review_count: 80
+    item_anchor_max_delta: 1.10
 
   anti_saturation_policy:
     enabled: true
     require_direct_review_for_5: true
-    no_direct_review_max_stars: 4.58
-    direct_review_max_adjustment: 0.30
+    no_direct_review_max_stars: 4.7
+    direct_review_max_adjustment: 0.4
 
   evidence_formula:
     method: dynamic_available_evidence_weighted_average
@@ -231,127 +231,72 @@ rating_policy:
 
 review_policy:
   global_rules:
-    - 'Output only one JSON object: {"stars": <float>, "review": "<text>"}'
-    - The output stars must equal predicted_stars exactly
-    - Do not recalculate stars inside the final review agent
-    - Do not mention IDs, formulas, tools, agents, YAML, or database fields
-    - Do not invent dishes, prices, service details, locations, or user preferences
-    - Use direct review evidence first when present
-    - If no direct review exists, never imply the user has reviewed or visited this exact item before
-    - Keep the review natural, Yelp-like, and consistent with predicted_stars
-    - Prefer concise concrete wording over generic praise
-    - Avoid unsupported named dishes, staff names, prices, wait times, and neighborhood details
-    - Match review tone precisely to the star rating; 1-2 stars must sound disappointed, 3 stars neutral-mixed, 4-5 stars satisfied
-    - Ground all specific claims in the available evidence; do not fabricate details about food, service, atmosphere, or experience
+    - 'Output only one JSON object: {"stars": <float>, "review": "<text>"}.'
+    - The output stars must equal predicted_stars exactly.
+    - Do not recalculate stars inside the final review agent.
+    - Do not mention IDs, formulas, tools, agents, YAML, or database fields.
+    - Do not invent dishes, prices, service details, locations, or user preferences.
+    - Use direct review evidence first when present.
+    - If no direct review exists, never imply the user has reviewed or visited this exact item before.
+    - Keep the review natural, Yelp-like, and consistent with predicted_stars.
+    - Prefer concise concrete wording over generic praise.
+    - Avoid unsupported named dishes, staff names, prices, wait times, and neighborhood details.
 
   sentiment_by_star:
-    one_star:
-      range: [1.0, 1.0]
-      tone: extremely negative
-      guidance: >
-        Write a scathing review. Use the strongest negative language: "terrible," "worst ever," "avoid at all costs."
-        Describe specific catastrophic failures. Sound genuinely angry and betrayed by the experience.
-        Include 2-3 devastating problems that made the visit completely unacceptable.
-
     one_to_two:
-      range: [1.5, 2.0]
+      range: [1.0, 2.0]
       tone: clearly negative
       guidance: >
-        Write a strongly dissatisfied review. Lead with the most significant complaint.
-        Use concrete negative descriptors: "bland," "overpriced," "slow," "cold," "undercooked," "rude," "disappointing."
-        Include 2-3 specific problems that justify the low rating. Avoid neutral or positive framing.
-        Sound genuinely disappointed and frustrated, not just mildly critical.
-
-    two_half:
-      range: [2.5, 2.5]
-      tone: mildly negative with some acceptance
-      guidance: >
-        Write a lukewarm negative review. Acknowledge something minimally acceptable but focus on shortcomings.
-        Use phrases like "not great" or "below expectations" or "wouldn't return."
-        Include one minor positive to appear fair, but make negative outweigh it clearly.
+        Write a dissatisfied review. Mention concrete disappointments only if supported
+        by evidence. Avoid sounding neutral or positive.
 
     two_half_to_three:
       range: [2.5, 3.0]
       tone: mixed or lukewarm
       guidance: >
-        Write a balanced but unenthusiastic review. Start with a weak positive, then pivot to concerns.
-        Use phrases like "it was okay" or "not bad but not great" or "had mixed results."
-        Include one genuine positive and one genuine negative. Avoid strong language in either direction.
-        Keep tone tentative and non-committal.
+        Balance positives and negatives. The review should sound acceptable but not
+        strongly recommended. Avoid overly enthusiastic phrases.
 
     three_half:
       range: [3.5, 3.5]
       tone: moderately positive with caveats
       guidance: >
-        Write a cautiously positive review. Begin with genuine praise, then introduce a qualification.
-        Use phrases like "pretty good" or "above average" or "worth trying."
-        Express mild reservations that prevent a higher rating. Avoid hedging on everything.
-        Let the positive outweigh the negative while acknowledging specific limitations.
-
-    four_half:
-      range: [4.5, 4.5]
-      tone: very positive with minor quibbles
-      guidance: >
-        Write a highly positive review with minimal qualification. Lead with strong praise.
-        Use phrases like "really enjoyed" or "highly recommend" or "definitely coming back."
-        Mention one minor area for improvement but make it clearly secondary to the positives.
+        Mention generally good aspects while including a limitation or mild reservation.
 
     four_to_five:
       range: [4.0, 5.0]
       tone: positive
       guidance: >
-        Write an enthusiastic, satisfied review. Lead with a strong positive statement.
-        Highlight specific strengths: "fresh," "flavorful," "attentive," "cozy," "generous portions."
-        Include 2-3 concrete positives that justify the rating. Avoid hedging or caveats.
-        Sound like a genuine recommendation from a satisfied customer.
+        Write a satisfied review. Highlight strengths supported by item/user/direct-review
+        evidence, but avoid unsupported specifics.
 
   case_review_guidance:
     case_1: >
-      Lead with direct review content, then weave in user tendency and item facts as supporting context.
-      Preserve the original sentiment direction and intensity from direct review evidence.
-      Use user history to personalize framing without fabricating specific experiences.
-      Reference item quality signals to add credibility to the review.
+      Use direct review content first, then user tendency and item facts if available.
+      Preserve original sentiment direction. Direct review is the strongest evidence.
 
     case_2: >
-      Use user rating tendency and item quality evidence to construct a plausible review.
-      Frame as general observations rather than personal experience. Avoid implying prior visit.
-      Reference typical patterns rather than specific instances.
-      Anchor on what similar users typically experience at this type of establishment.
+      Use user rating tendency, user history style examples, item categories, and item
+      quality evidence. Do not imply this user has reviewed this exact item before.
 
     case_3: >
-      Anchor on direct review content. Add item facts for specificity without inferring user history.
-      Let the direct review's sentiment guide the overall tone while enriching with item context.
-      Use item signals to validate or contextualize the direct review's claims.
+      Use direct review content and item facts. Do not infer user history or user preferences.
 
     case_4: >
-      Use item facts and item history to write a plausible item-grounded review.
-      Match predicted_stars intensity. Avoid user-specific claims entirely.
-      Focus on what the item typically offers rather than personal observations.
-      Reference item quality signals to justify the rating.
+      Use item facts and item history only. Write a plausible item-grounded review matching
+      predicted_stars. Avoid user-specific claims.
 
     case_5: >
-      Lead with direct review content, use user tendency for framing.
-      Avoid item-specific facts if item profile is missing; keep descriptions generic.
-      Let user patterns explain the rating without inventing item-specific details.
-      Use user history to set appropriate expectations.
+      Use direct review content and user tendency. Avoid item-specific facts if item profile is missing.
 
     case_6: >
-      Use user rating tendency and writing style. Keep item details generic and low-specificity.
-      Focus on general expectations rather than specific experiences.
-      Reference what this type of user typically values without claiming direct knowledge.
-      Let user patterns predict likely satisfaction level.
+      Use user rating tendency and user writing style only. Keep item details generic and low-specificity.
 
     case_7: >
       Use direct review content only. Avoid both user-profile and item-profile claims.
-      Let the direct review's own words guide the tone and content.
-      Trust the reviewer's voice to convey sentiment accurately.
-      Do not add external context not present in the review.
 
     case_8: >
       Use generic fallback review. Keep language neutral, low-specificity, and consistent with default_prior.
-      Focus on common expectations rather than specific evidence.
-      Avoid strong claims in either direction.
-      Use safe, universally applicable descriptors.
 
 optimization_notes:
   primary_metric: star_accuracy
@@ -360,19 +305,24 @@ optimization_notes:
 
   evolvable_search_space:
     - rating_policy.default_prior
+
     - rating_policy.evidence_weights.base_user_weight
     - rating_policy.evidence_weights.base_item_weight
     - rating_policy.evidence_weights.direct_review_weight
+
     - rating_policy.confidence_policy.user_confidence_divisor
     - rating_policy.confidence_policy.item_confidence_divisor
     - rating_policy.confidence_policy.user_confidence_bonus
     - rating_policy.confidence_policy.item_confidence_bonus
     - rating_policy.confidence_policy.min_confidence_multiplier
     - rating_policy.confidence_policy.max_confidence_multiplier
+
     - rating_policy.history_blend_policy.user_history_blend_weight
     - rating_policy.history_blend_policy.item_history_blend_weight
+
     - rating_policy.anchor_policy.user_anchor_max_delta
     - rating_policy.anchor_policy.item_anchor_max_delta
+
     - review_policy.sentiment_by_star
     - review_policy.case_review_guidance
 
