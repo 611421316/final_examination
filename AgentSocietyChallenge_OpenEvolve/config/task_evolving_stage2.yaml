@@ -1,0 +1,149 @@
+
+retrieve_data_task:
+  description: >
+    Return the already-computed deterministic prediction context below exactly:
+
+    {prediction_context}
+
+    Hard rules:
+    - Do not call tools unless prediction_context is empty.
+    - Do not summarize the context.
+    - Do not calculate stars yourself.
+    - Do not generate the final review.
+    - Return the exact JSON object from prediction_context.
+  expected_output: >
+    The exact JSON object from prediction_context. It must contain case, user, item,
+    review_style, evidence_summary, review_policy, predicted_stars, and
+    rating_weight_trace if available.
+  agent: exact_yelp_data_retriever
+
+detect_case_task:
+  description: >
+    Inspect the JSON context from retrieve_data_task and return a compact JSON
+    case analysis.
+
+    Use only these fields from the context:
+    - case.user_exists
+    - case.item_exists
+    - case.direct_review_exists
+    - case.case_number
+    - case.case_name
+    - case.dominant_evidence
+    - case.fallback_policy
+
+    Do not call tools.
+    Do not modify predicted_stars.
+    Do not invent facts.
+  expected_output: >
+    A compact valid JSON object containing case_number, case_name,
+    dominant_evidence, fallback_policy, and flags.
+  agent: yelp_case_detection_analyst
+  context:
+    - retrieve_data_task
+# EVOLVE-BLOCK-START
+analyze_user_behavior_task:
+  description: >
+    Analyze user evidence from the retrieved JSON context.
+
+    Use only:
+    - user
+    - review_style.user_review_count_used
+    - review_style.user_history_average_stars
+    - review_style.style_examples
+    - review_style.user_common_terms
+    - review_style.user_common_positive_terms
+    - review_style.user_common_negative_terms
+    - evidence_summary.user_signal
+    - evidence_summary.history_signal
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change stars.
+    - Do not invent preferences.
+    - If user evidence is missing, clearly say user evidence is unavailable.
+    - Return compact JSON only.
+  expected_output: >
+    A compact valid JSON object describing user rating tendency, confidence,
+    available user history, writing style evidence, and limitations.
+  agent: yelp_user_behavior_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+
+analyze_item_review_context_task:
+  description: >
+    Analyze item and review-writing evidence from the retrieved JSON context.
+
+    Use only:
+    - item
+    - review_style.item_review_count_used
+    - review_style.item_history_average_stars
+    - review_style.direct_review_excerpt
+    - review_style.direct_review_stars
+    - review_policy
+    - evidence_summary.item_signal
+    - evidence_summary.direct_review_signal
+    - evidence_summary.generation_note
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change stars.
+    - Do not invent dishes, service issues, prices, locations, or item facts.
+    - If item evidence is missing, clearly say item evidence is unavailable.
+    - Return compact JSON only.
+  expected_output: >
+    A compact valid JSON object describing item evidence, direct review evidence,
+    review tone guidance, safe wording constraints, and limitations.
+  agent: yelp_item_review_context_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+
+predict_review_task:
+  description: >
+    Generate exactly one final JSON object using the retrieved prediction context
+    and the compact analyses from previous tasks.
+
+    Absolute hard rules:
+    - Output valid JSON only.
+    - Output exactly two keys: stars and review.
+    - stars must equal predicted_stars from retrieve_data_task exactly.
+    - Do not recalculate stars.
+    - Do not override predicted_stars.
+    - Use evidence_summary, review_policy, user, item, review_style, user analysis,
+      and item analysis only for grounded wording.
+    - Do not mention IDs, formulas, tools, YAML, database fields, agents, or
+      unsupported facts.
+    - If direct_review_exists is false, never imply the user reviewed this exact
+      item before.
+    - If user profile is missing, avoid user-specific claims.
+    - If item profile is missing, avoid item-specific claims.
+    - Return raw JSON only.
+    - No markdown.
+    - No prose before JSON.
+    - No prose after JSON.
+    - No rationale.
+    - No explanation.
+    - The first character must be "{".
+    - The last character must be "}".
+
+    Output format:
+    {"stars": <predicted_stars>, "review": "<natural Yelp-style review>"}
+  expected_output: >
+    A valid JSON object only:
+    {"stars": <float copied exactly from predicted_stars>, "review": "<string>"}
+    A raw JSON object only.
+    Do not use markdown.
+    Do not use ```json fences.
+    Do not add explanation.
+    Do not add rationale.
+    The first character must be { and the last character must be }.
+  agent: deterministic_yelp_review_simulator
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+    - analyze_item_review_context_task
+
+# EVOLVE-BLOCK-END
