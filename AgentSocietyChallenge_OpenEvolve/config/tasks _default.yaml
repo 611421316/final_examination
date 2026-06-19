@@ -46,7 +46,7 @@ detect_case_task:
   agent: yelp_case_detection_analyst
   context:
     - retrieve_data_task
-
+# EVOLVE-BLOCK-START
 analyze_user_behavior_task:
   description: >
     Analyze user evidence from the retrieved JSON context.
@@ -151,3 +151,4 @@ predict_review_task:
     - detect_case_task
     - analyze_user_behavior_task
     - analyze_item_review_context_task
+# EVOLVE-BLOCK-END
