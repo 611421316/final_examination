@@ -33,6 +33,7 @@ yelp_user_behavior_analyst:
   verbose: true
   allow_delegation: false
   max_iter: 1
+
 yelp_item_review_context_analyst:
   role: Yelp Item and Review Context Analyst
   goal: Analyze item context, direct review evidence, review policy, and safe review-writing evidence
