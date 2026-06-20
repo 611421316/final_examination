@@ -1,22 +1,16 @@
+
 retrieve_data_task:
   description: >
     Return the already-computed deterministic prediction context below exactly:
 
     {prediction_context}
 
-    Absolute hard rules:
-    - Do not call any tool.
-    - Do not use Thought.
-    - Do not use Action.
-    - Do not use Action Input.
-    - Do not use Observation.
-    - Do not repair JSON.
-    - Do not summarize.
-    - Do not explain.
-    - Do not wrap in markdown.
-    - Return only the raw JSON object from prediction_context.
-    - The first character must be {.
-    - The last character must be }.
+    Hard rules:
+    - Do not call tools unless prediction_context is empty.
+    - Do not summarize the context.
+    - Do not calculate stars yourself.
+    - Do not generate the final review.
+    - Return the exact JSON object from prediction_context.
   expected_output: >
     The exact JSON object from prediction_context. It must contain case, user, item,
     review_style, evidence_summary, review_policy, predicted_stars, and
@@ -151,4 +145,5 @@ predict_review_task:
     - detect_case_task
     - analyze_user_behavior_task
     - analyze_item_review_context_task
+
 # EVOLVE-BLOCK-END
