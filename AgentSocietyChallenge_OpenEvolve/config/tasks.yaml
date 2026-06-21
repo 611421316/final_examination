@@ -1,4 +1,3 @@
-
 retrieve_data_task:
   description: >
     Return the already-computed deterministic prediction context below exactly:
