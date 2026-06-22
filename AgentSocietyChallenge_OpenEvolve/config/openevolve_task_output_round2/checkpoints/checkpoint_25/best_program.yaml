@@ -1,0 +1,198 @@
+retrieve_data_task:
+  description: >
+    Return the already-computed deterministic prediction context below exactly:
+
+    {prediction_context}
+
+    Hard rules:
+    - Do not call tools unless prediction_context is empty.
+    - Do not summarize the context.
+    - Do not calculate stars yourself.
+    - Do not generate the final review.
+    - Return the exact JSON object from prediction_context.
+  expected_output: >
+    The exact JSON object from prediction_context. It must contain case, user, item,
+    review_style, evidence_summary, review_policy, predicted_stars, and
+    rating_weight_trace if available.
+  agent: exact_yelp_data_retriever
+
+detect_case_task:
+  description: >
+    Inspect the JSON context from retrieve_data_task and return a compact JSON
+    case analysis.
+
+    Use only these fields from the context:
+    - case.user_exists
+    - case.item_exists
+    - case.direct_review_exists
+    - case.case_number
+    - case.case_name
+    - case.dominant_evidence
+    - case.fallback_policy
+
+    Do not call tools.
+    Do not modify predicted_stars.
+    Do not invent facts.
+  expected_output: >
+    A compact valid JSON object containing case_number, case_name,
+    dominant_evidence, fallback_policy, and flags.
+  agent: yelp_case_detection_analyst
+  context:
+    - retrieve_data_task
+# EVOLVE-BLOCK-START
+analyze_user_behavior_task:
+  description: >
+    Psychological analysis of user rating patterns to establish accurate baseline.
+
+    Extract from available evidence:
+    - user.rating_history: Past star ratings with timestamps
+    - user.average_stars: Computed mean rating (PRIMARY OUTPUT)
+    - user.rating_std_dev: Rating consistency measure
+    - user.review_count: Total reviews for confidence weighting
+    - review_style.user_history_average_stars: Cross-validated average
+    - review_style.style_examples: 2-3 exemplar reviews showing voice
+    - review_style.user_common_terms: Frequently used vocabulary
+    - review_style.user_common_positive_terms: Positive sentiment words
+    - review_style.user_common_negative_terms: Negative sentiment words
+    - evidence_summary.user_signal: Signal strength indicator
+    - evidence_summary.history_signal: Historical data quality
+
+    Compute and include these fields:
+    - rating_tendency: "generous" (>4.2), "moderate" (3.5-4.2), "harsh" (<3.5)
+    - rating_deviation_pattern: How user typically differs from item average
+    - confidence_level: "high"(>10 reviews)/"medium"(5-10)/"low"(<5)/"none"
+    - sentiment_polarity: Typical review tone (-1 to 1 scale)
+    - sentiment_intensity: Emotional strength in reviews (0.0-1.0 scale)
+    - typical_review_length: "short"(<50 chars)/"medium"(50-150)/"long"(>150)
+    - style_anchors: Key phrases or patterns from style_examples
+    - writing_patterns: Structural patterns (starts with opinions, lists, etc.)
+    - user_baseline_stars: PRIMARY - user's historical mean rating (float, 1.0-5.0)
+    - deviation_from_item_relevance: How user differs from current item baseline
+    - rating_calibration_weight: How much to blend predicted_stars toward user_baseline
+    - limitations: Note any missing data or confidence issues
+
+    Calibration weights:
+    - "high" confidence: weight = 0.7 toward user_baseline
+    - "medium" confidence: weight = 0.4 toward user_baseline
+    - "low" confidence: weight = 0.2 toward user_baseline
+    - "none" confidence: keep predicted_stars unchanged
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change predicted_stars directly.
+    - Do not invent preferences not present in evidence.
+    - user_baseline_stars MUST be computed from actual rating_history if available.
+    - Return compact valid JSON only.
+  expected_output: >
+    {"rating_tendency": "string", "rating_deviation_pattern": "string",
+     "confidence_level": "string", "sentiment_polarity": "float",
+     "sentiment_intensity": "float", "typical_review_length": "string",
+     "writing_patterns": ["string"], "style_anchors": ["string"],
+     "user_baseline_stars": "float", "deviation_from_item_relevance": "string",
+     "rating_calibration_weight": "float", "limitations": "string"}
+  agent: yelp_user_behavior_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+
+analyze_item_review_context_task:
+  description: >
+    Analyze item characteristics and calibrate against user preferences.
+
+    Extract and analyze:
+    - item.average_stars: Item's historical rating baseline
+    - item.review_count: Item popularity/credibility indicator
+    - review_style.item_history_average_stars: Item's computed average
+    - review_style.direct_review_excerpt: Original review text if exists
+    - review_style.direct_review_stars: Stars from direct review if exists
+    - review_policy: Guidance for review generation
+    - evidence_summary.item_signal: Item data quality
+    - evidence_summary.direct_review_signal: Direct review signal strength
+    - evidence_summary.generation_note: Special instructions
+
+    Compute and include:
+    - item_baseline_stars: The item's expected rating
+    - item_reliability: "high"(>50 reviews)/"medium"(10-50)/"low"(<10)/"unknown"
+    - sentiment_alignment: How item's general sentiment matches user tendency
+    - rating_calibration: Suggested adjustment toward user baseline
+    - direct_review_weight: Relevance of direct_review_excerpt if available
+    - safe_review_claims: Verified item facts to reference
+    - forbidden_claims: Unverified facts to avoid
+    - tone_guidance: Recommended review tone based on item context
+    - sentiment_anchors: Key phrases from direct review if exists
+    - item_context_summary: Brief summary for review context
+    - item_category_hints: Category-specific vocabulary to use
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change predicted_stars.
+    - Do not invent dishes, prices, service details, or locations.
+    - If item evidence is missing, set item_reliability to "unknown".
+    - Return compact valid JSON only.
+  expected_output: >
+    {"item_baseline_stars": "float", "item_reliability": "string",
+     "sentiment_alignment": "string", "rating_calibration": "float",
+     "direct_review_weight": "float", "safe_review_claims": ["string"],
+     "forbidden_claims": ["string"], "tone_guidance": "string",
+     "sentiment_anchors": ["string"], "item_context_summary": "string",
+     "item_category_hints": ["string"], "limitations": "string"}
+  agent: yelp_item_review_context_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+
+predict_review_task:
+  description: >
+    Synthesize all context into final calibrated rating and authentic review.
+
+    Input integration requirements:
+    - Start with predicted_stars from retrieve_data_task
+    - Use user_baseline_stars and rating_calibration_weight from analyze_user_behavior_task
+    - Use review_style for vocabulary and phrasing patterns
+    - Use analyze_user_behavior_task for style_anchors, sentiment_polarity,
+      sentiment_intensity, typical_review_length, rating_tendency, writing_patterns
+    - Use analyze_item_review_context_task for safe_review_claims,
+      tone_guidance, sentiment_anchors, item_category_hints
+    - Use evidence_summary for grounded sentiment direction
+
+    Rating calibration (PRIMARY OBJECTIVE):
+    - Apply calibration: final_stars = predicted_stars + (user_baseline_stars - predicted_stars) * rating_calibration_weight
+    - Clamp final_stars to [1.0, 5.0] with 0.5 step increments
+    - Higher confidence = more weight toward user_baseline_stars
+
+    Review generation rules:
+    - Match user's typical_review_length from behavior analysis
+    - Incorporate 2-3 style_anchors from user analysis
+    - Follow writing_patterns (if user starts with opinions, do the same)
+    - Use sentiment_polarity to calibrate positive/negative balance
+    - Apply sentiment_intensity for emotional strength in language
+    - Reference only safe_review_claims from item analysis
+    - Avoid forbidden_claims from item analysis
+    - Follow tone_guidance from item analysis
+    - Match rating_tendency in word choice (generous=warmer, harsh=critical)
+    - If direct_review_exists is true, blend sentiment_anchors naturally
+    - Use item_category_hints for authentic category-specific language
+    - Keep review grounded in evidence_summary facts only
+
+    Output constraints (absolute):
+    - Valid JSON with exactly two keys: "stars" and "review"
+    - stars = calibrated rating (may differ from predicted_stars if confidence allows)
+    - review must be a natural Yelp-style text string
+    - No markdown, no code fences, no explanation
+    - First character must be "{", last character must be "}"
+    - No mention of agents, tools, IDs, formulas, or YAML
+    - No fabricated details about service, food, price, or location
+  expected_output: >
+    {"stars": <float 1.0-5.0 in 0.5 increments>, "review": "<Yelp-style review text>"}
+    
+    Example valid output:
+    {"stars": 4.0, "review": "Solid spot for casual dining. The atmosphere was relaxed and the service prompt. Would return for the signature dish."}
+  agent: deterministic_yelp_review_simulator
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+    - analyze_item_review_context_task
+
+# EVOLVE-BLOCK-END

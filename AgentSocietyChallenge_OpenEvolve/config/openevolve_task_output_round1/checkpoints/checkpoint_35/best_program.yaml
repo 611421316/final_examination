@@ -1,0 +1,175 @@
+retrieve_data_task:
+  description: >
+    Return the already-computed deterministic prediction context below exactly:
+
+    {prediction_context}
+
+    Hard rules:
+    - Do not call tools unless prediction_context is empty.
+    - Do not summarize the context.
+    - Do not calculate stars yourself.
+    - Do not generate the final review.
+    - Return the exact JSON object from prediction_context.
+  expected_output: >
+    The exact JSON object from prediction_context. It must contain case, user, item,
+    review_style, evidence_summary, review_policy, predicted_stars, and
+    rating_weight_trace if available.
+  agent: exact_yelp_data_retriever
+
+detect_case_task:
+  description: >
+    Inspect the JSON context from retrieve_data_task and return a compact JSON
+    case analysis.
+
+    Use only these fields from the context:
+    - case.user_exists
+    - case.item_exists
+    - case.direct_review_exists
+    - case.case_number
+    - case.case_name
+    - case.dominant_evidence
+    - case.fallback_policy
+
+    Do not call tools.
+    Do not modify predicted_stars.
+    Do not invent facts.
+  expected_output: >
+    A compact valid JSON object containing case_number, case_name,
+    dominant_evidence, fallback_policy, and flags.
+  agent: yelp_case_detection_analyst
+  context:
+    - retrieve_data_task
+# EVOLVE-BLOCK-START
+analyze_user_behavior_task:
+  description: >
+    Deep behavioral analysis of user rating patterns to predict alignment with
+    this item. Extract precise signals for accurate rating prediction and
+    authentic review generation.
+
+    Use only these fields:
+    - user (profile, preferences, historical ratings)
+    - review_style.user_review_count_used
+    - review_style.user_history_average_stars
+    - review_style.style_examples (up to 3 examples)
+    - review_style.user_common_terms
+    - review_style.user_common_positive_terms
+    - review_style.user_common_negative_terms
+    - review_style.user_rating_distribution
+    - evidence_summary.user_signal
+    - evidence_summary.history_signal
+    - item (category, average rating, characteristics)
+    - predicted_stars (reference only, do not modify)
+
+    Hard rules:
+    - Do not call tools.
+    - Do not change or override predicted_stars.
+    - Do not invent preferences unsupported by evidence.
+    - Calculate explicit deviation: item_average - user_average = deviation_score
+    - Identify rating threshold patterns (what star level triggers specific language)
+    - Map user sentiment vocabulary to star levels
+    - If user evidence is missing, state "user_evidence: unavailable"
+    - Return compact JSON with precise behavioral mappings
+
+  expected_output: >
+    Compact valid JSON containing:
+    - user_average: user's historical mean rating
+    - user_std_dev: user's rating consistency (low = predictable, high = varied)
+    - deviation_from_item: how item rating compares to user's typical
+    - rating_bias_direction: positive/negative/neutral with magnitude
+    - key_factors: top 2-3 aspects user weighs heavily
+    - sentiment_to_stars_map: how user maps sentiment words to star levels
+    - style_tone: casual/formal/mixed and sentiment tendency
+    - review_length_target: short/medium/long based on user's pattern
+    - vocabulary_markers: 3-5 distinctive phrases to echo authentically
+    - confidence: high/medium/low with reasoning
+  agent: yelp_user_behavior_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+
+analyze_item_review_context_task:
+  description: >
+    Analyze item characteristics and generate actionable review-writing guidance.
+    Bridge the gap between item signals and authentic review language.
+
+    Use only these fields:
+    - item (category, average rating, characteristics)
+    - review_style.item_history_average_stars
+    - review_style.direct_review_excerpt
+    - review_style.direct_review_stars
+    - review_policy
+    - evidence_summary.item_signal
+    - evidence_summary.direct_review_signal
+    - evidence_summary.generation_note
+    - predicted_stars (for alignment reference only)
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change predicted_stars.
+    - Do not invent dishes, service details, prices, locations, or item facts.
+    - If item evidence is missing, state "item_evidence: unavailable"
+    - Focus on review-writing mechanics, not rating calculation
+    - Return JSON with specific linguistic guidance
+
+  expected_output: >
+    Compact valid JSON containing:
+    - item_category: category for tone calibration
+    - item_alignment: how well item matches typical reviews (1-5)
+    - evidence_strength: strong/moderate/weak/none
+    - rating_language_patterns: phrases appropriate for this star level
+    - sentiment_curve: how sentiment should escalate/de-escalate
+    - positive_anchors: 2-3 specific positive phrases if rating >= 4
+    - negative_anchors: 2-3 specific negative phrases if rating <= 2
+    - neutral_anchors: 2-3 balanced phrases if rating == 3
+    - phrasing_constraints: must_include/must_avoid lists
+    - emotional_arc: suggested review structure (hook, body, conclusion)
+  agent: yelp_item_review_context_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+
+predict_review_task:
+  description: >
+    Generate the final review by combining all analyses into authentic output.
+    The stars are predetermined - focus entirely on matching user voice and style.
+
+    Absolute hard rules:
+    - Output valid JSON only.
+    - Output exactly two keys: stars and review.
+    - stars = predicted_stars value exactly (copy without modification).
+    - Do not recalculate, estimate, or override stars under any circumstance.
+    - review must be a non-empty string.
+    - The first character of output must be "{".
+    - The last character of output must be "}".
+    - No markdown, no code blocks, no prose, no explanation.
+
+    Style guidance (apply all):
+    - Use vocabulary_markers from user analysis when they fit naturally
+    - Match review_length_target from user analysis
+    - Apply sentiment_to_stars_map for appropriate word choice
+    - Include emotional_arc structure from item analysis
+    - Use rating_language_patterns appropriate for the star level
+    - Echo positive_anchors, negative_anchors, or neutral_anchors as fit
+
+    Content constraints:
+    - Do not mention IDs, formulas, tools, YAML, database, agents, or metadata
+    - Do not claim personal experience if direct_review_exists is false
+    - Do not invent specific dishes, prices, or service details not in context
+    - If user profile missing, use generic but plausible review voice
+    - If item profile missing, focus on general category-appropriate language
+
+    Output format:
+    {"stars": <float>, "review": "<natural review text>"}
+  expected_output: >
+    Raw JSON only with two keys: stars and review.
+    Stars must equal predicted_stars exactly.
+    Review must be natural, authentic, and match user's typical style.
+    No markdown, no code blocks, no explanatory text.
+  agent: yelp_review_generator
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+    - analyze_item_review_context_task
+# EVOLVE-BLOCK-END

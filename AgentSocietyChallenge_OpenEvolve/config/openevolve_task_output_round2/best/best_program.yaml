@@ -1,0 +1,184 @@
+# EVOLVE-BLOCK-START
+analyze_user_behavior_task:
+  description: >
+    Analyze user evidence to extract rating tendency and writing style patterns.
+    This analysis directly informs the star rating prediction and review authenticity.
+
+    Use only these fields:
+    - user
+    - review_style.user_review_count_used
+    - review_style.user_history_average_stars
+    - review_style.style_examples
+    - review_style.user_common_terms
+    - review_style.user_common_positive_terms
+    - review_style.user_common_negative_terms
+    - evidence_summary.user_signal
+    - evidence_summary.history_signal
+
+    Extract and output:
+    1. user_average: The user's historical average rating (key anchor for prediction)
+    2. rating_tendency: Whether user rates above/below/around item average
+       - "above_average": user_average > item_history_average_stars + 0.5
+       - "below_average": user_average < item_history_average_stars - 0.5
+       - "aligned": within 0.5 stars of item average
+    3. confidence: Based on review_count_used and signal strength
+       - "high": review_count >= 8 and strong signal
+       - "medium": review_count 3-7 or moderate signal
+       - "low": review_count < 3 or weak signal
+    4. style_signatures: 2-3 characteristic phrases from style_examples to echo
+       - Extract actual phrases from user's past reviews
+       - Prioritize unique sentence structures or expressions
+       - Note sentence length patterns (short punchy vs long descriptive)
+    5. sentiment_tone: Typical positive/negative balance in user's reviews
+       - "enthusiastic": mostly 5-star language, superlatives
+       - "positive": generally favorable with moderate praise
+       - "mixed": balanced positive and negative observations
+       - "critical": mostly complaints or concerns
+       - "harsh": strongly negative language
+    6. vocabulary_markers: Key terms this user gravitates toward
+       - Combine positive, negative, and common terms
+       - Prioritize terms that appear across multiple reviews
+       - Note exclamation patterns and emphasis techniques
+
+    Hard rules:
+    - Do not call tools.
+    - Do not modify predicted_stars.
+    - Do not invent preferences or phrases not in the data.
+    - If user evidence is missing, clearly say user evidence is unavailable.
+    - Return compact JSON only with these keys: user_average, rating_tendency,
+      confidence, style_signatures, sentiment_tone, vocabulary_markers, limitations.
+  expected_output: >
+    A compact valid JSON object with: user_average (float or null),
+    rating_tendency (string), confidence (string), style_signatures (array),
+    sentiment_tone (string), vocabulary_markers (array), limitations (string).
+  agent: yelp_user_behavior_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+
+analyze_item_review_context_task:
+  description: >
+    Analyze item and review context to establish quality signals and safe wording.
+    This analysis ensures review authenticity and prevents policy violations.
+
+    Use only these fields:
+    - item
+    - review_style.item_review_count_used
+    - review_style.item_history_average_stars
+    - review_style.direct_review_excerpt
+    - review_style.direct_review_stars
+    - review_policy
+    - evidence_summary.item_signal
+    - evidence_summary.direct_review_signal
+    - evidence_summary.generation_note
+
+    Extract and output:
+    1. item_quality: The item's historical average rating (0.0-5.0 scale)
+    2. quality_confidence: Based on item_review_count_used
+       - "high": count >= 15
+       - "medium": count 4-14
+       - "low": count < 4
+    3. direct_review_notes: If direct_review_exists, capture:
+       - tone: the sentiment expressed (positive/negative/mixed)
+       - key_themes: main topics mentioned (food, service, ambiance, etc.)
+       - specific_praise: particular aspects praised
+       - specific_complaints: particular issues raised
+       - star_level: the direct review's star rating if available
+    4. safe_topics: Verified item features safe to reference
+       - Only include topics that appear in item data or direct reviews
+       - Examples: specific dishes, service aspects, location features
+    5. tone_boundaries: What sentiment level is appropriate given item quality
+       - For item_quality >= 4.0: enthusiastic to positive tone expected
+       - For item_quality 3.0-3.9: balanced to positive tone expected
+       - For item_quality < 3.0: mixed to critical tone expected
+    6. forbidden_claims: What to avoid per review_policy
+       - Parse review_policy for explicit prohibitions
+       - Include any claims not supported by item data
+
+    Hard rules:
+    - Do not call tools.
+    - Do not modify predicted_stars.
+    - Do not invent dishes, prices, service details, or locations.
+    - If item evidence is missing, clearly say item evidence is unavailable.
+    - Return compact JSON only with these keys: item_quality, quality_confidence,
+      direct_review_notes, safe_topics, tone_boundaries, forbidden_claims, limitations.
+  expected_output: >
+    A compact valid JSON object with: item_quality (float or null),
+    quality_confidence (string), direct_review_notes (object or null),
+    safe_topics (array), tone_boundaries (string), forbidden_claims (array),
+    limitations (string).
+  agent: yelp_item_review_context_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+
+predict_review_task:
+  description: >
+    Generate exactly one final JSON object synthesizing all prior analyses.
+    The review must authentically represent the user's voice and align with predicted_stars.
+
+    Absolute hard rules:
+    - Output valid JSON only.
+    - Output exactly two keys: stars and review.
+    - stars must equal predicted_stars from retrieve_data_task exactly.
+    - Do not recalculate stars. Do not override predicted_stars.
+
+    Rating-to-sentiment mapping (use this as primary guide):
+    - 5 stars: Raving enthusiastic, superlatives, "best ever", "amazing", "perfect", "incredible"
+    - 4 stars: Positive enthusiastic, "really good", "enjoyed", "would recommend", "great choice"
+    - 3 stars: Balanced mixed, "okay", "decent", "expected more", both positives and negatives
+    - 2 stars: Disappointed critical, "underwhelming", "not great", "expected better", mostly complaints
+    - 1 star: Frustrated harsh, "terrible", "avoid", "worst", strong complaints, no positive mentions
+
+    Review generation guidance (apply in priority order):
+    1. STRICTLY match predicted_stars sentiment using rating-to-sentiment mapping above
+    2. Echo 1-2 style_signatures from user analysis to match user's authentic voice
+    3. Reference safe_topics from item analysis (verified item features only)
+    4. Respect tone_boundaries from item analysis
+    5. Avoid all forbidden_claims from item analysis
+    6. If direct_review_notes exists, mirror its key themes and tone
+    7. Use vocabulary_markers from user analysis when natural and appropriate
+    8. Ensure sentiment_tone from user analysis is consistent with predicted_stars
+    9. For fractional stars (e.g., 3.5), use the lower whole number's tone with slight upward adjustment
+
+    Writing principles:
+    - Write as if YOU are this specific user, not about this user
+    - Use first person ("I", "my") for authentic voice
+    - Keep sentences natural and conversational
+    - Vary sentence structure to match style_signatures
+    - Include specific details from safe_topics when available
+    - Match user's typical review length patterns
+    - Use user's typical punctuation patterns (exclamations, periods)
+
+    Prohibited mentions:
+    - IDs, formulas, tools, YAML, database fields, agents
+    - Facts not supported by the data
+    - Claims user reviewed this item if direct_review_exists is false
+    - Generic phrases not in user's vocabulary_markers
+    - Language that contradicts the star rating
+
+    Output constraints:
+    - Raw JSON only. No markdown. No fences.
+    - No prose before or after JSON.
+    - No rationale. No explanation.
+    - First character "{", last character "}".
+    - Review length by star level:
+      * 1-2 stars: 2-4 sentences, critical tone, focus on disappointments
+      * 3 stars: 3-5 sentences, balanced tone, acknowledge both pros and cons
+      * 4-5 stars: 4-6 sentences, positive tone, emphasize positive experiences
+
+    Output format:
+    {"stars": <predicted_stars>, "review": "<natural Yelp-style review>"}
+  expected_output: >
+    A valid JSON object only:
+    {"stars": <float copied exactly from predicted_stars>, "review": "<string>"}
+    Raw JSON only. No markdown. No explanation. First char "{", last char "}".
+  agent: deterministic_yelp_review_simulator
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+    - analyze_item_review_context_task
+
+# EVOLVE-BLOCK-END

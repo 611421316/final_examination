@@ -1,0 +1,165 @@
+retrieve_data_task:
+  description: >
+    Return the already-computed deterministic prediction context below exactly:
+
+    {prediction_context}
+
+    Hard rules:
+    - Do not call tools unless prediction_context is empty.
+    - Do not summarize the context.
+    - Do not calculate stars yourself.
+    - Do not generate the final review.
+    - Return the exact JSON object from prediction_context.
+  expected_output: >
+    The exact JSON object from prediction_context. It must contain case, user, item,
+    review_style, evidence_summary, review_policy, predicted_stars, and
+    rating_weight_trace if available.
+  agent: exact_yelp_data_retriever
+
+detect_case_task:
+  description: >
+    Inspect the JSON context from retrieve_data_task and return a compact JSON
+    case analysis.
+
+    Use only these fields from the context:
+    - case.user_exists
+    - case.item_exists
+    - case.direct_review_exists
+    - case.case_number
+    - case.case_name
+    - case.dominant_evidence
+    - case.fallback_policy
+
+    Do not call tools.
+    Do not modify predicted_stars.
+    Do not invent facts.
+  expected_output: >
+    A compact valid JSON object containing case_number, case_name,
+    dominant_evidence, fallback_policy, and flags.
+  agent: yelp_case_detection_analyst
+  context:
+    - retrieve_data_task
+# EVOLVE-BLOCK-START
+analyze_user_behavior_task:
+  description: >
+    Analyze user rating patterns to predict alignment with this item and guide
+    rating/review generation. Focus on bridging user preferences to expected rating.
+
+    Use only:
+    - user (profile, preferences, historical ratings)
+    - review_style.user_review_count_used
+    - review_style.user_history_average_stars
+    - review_style.style_examples
+    - review_style.user_common_terms
+    - review_style.user_common_positive_terms
+    - review_style.user_common_negative_terms
+    - review_style.user_rating_distribution
+    - evidence_summary.user_signal
+    - evidence_summary.history_signal
+    - item (category, average rating, characteristics)
+
+    Hard rules:
+    - Do not call tools.
+    - Do not change predicted_stars.
+    - Do not invent preferences.
+    - Calculate rating deviation: how does the item's characteristics compare to
+      what this user typically rates highly vs low.
+    - Estimate rating bias: does this user tend to rate higher or lower than average?
+    - Identify key factors this user cares about based on their history.
+    - If user evidence is missing, clearly say user evidence is unavailable.
+    - Return compact JSON with rating_prediction guidance.
+
+  expected_output: >
+    A compact valid JSON object containing:
+    - user_rating_tendency: user's typical rating behavior
+    - rating_bias: positive/negative/neutral bias relative to item average
+    - key_preference_factors: what aspects user cares about
+    - style_tone: user's typical review tone and sentiment
+    - confidence: how confident we are in prediction
+    - review_length_tendency: typical review length
+    - vocabulary_markers: distinctive words/phrases to echo
+  agent: yelp_user_behavior_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+
+analyze_item_review_context_task:
+  description: >
+    Analyze item characteristics and review-writing guidance, focusing on how
+    user preferences should map to the final rating and review language.
+
+    Use only:
+    - item
+    - review_style.item_review_count_used
+    - review_style.item_history_average_stars
+    - review_style.direct_review_excerpt
+    - review_style.direct_review_stars
+    - review_policy
+    - evidence_summary.item_signal
+    - evidence_summary.direct_review_signal
+    - evidence_summary.generation_note
+
+    Hard rules:
+    - Do not call tools.
+    - Do not estimate or change stars.
+    - Do not invent dishes, service issues, prices, locations, or item facts.
+    - If item evidence is missing, clearly say item evidence is unavailable.
+    - Return compact JSON with explicit rating-to-review mapping guidance.
+
+  expected_output: >
+    A compact valid JSON object containing:
+    - item_alignment_score: how well item matches user preferences (1-5 scale)
+    - item_evidence_quality: strength of item-level signals
+    - rating_reasoning_patterns: what rationales justify this star level
+    - review_tone_guidance: positive/negative/neutral tone for this rating
+    - safe_wording_constraints: phrases to avoid or include
+    - sentiment_anchors: specific sentiment words matching user's style
+    - limitations: what cannot be claimed or inferred
+  agent: yelp_item_review_context_analyst
+  context:
+    - retrieve_data_task
+    - detect_case_task
+    - analyze_user_behavior_task
+
+predict_review_task:
+  description: >
+    Generate exactly one final JSON object using the retrieved prediction context
+    and the compact analyses from previous tasks. Apply user-specific rating
+    patterns and review style to produce authentic output.
+
+    Absolute hard rules:
+    - Output valid JSON only.
+    - Output exactly two keys: stars and review.
+    - stars must equal predicted_stars from retrieve_data_task exactly.
+    - Do not recalculate stars.
+    - Do not override predicted_stars.
+    - Use evidence_summary, review_policy, user, item, review_style, user analysis,
+      and item analysis only for grounded wording.
+    - Apply user_rating_tendency and rating_bias from user analysis to inform
+      vocabulary choices that match the user's authentic voice.
+    - Use sentiment_anchors and rating_reasoning_patterns to calibrate review tone.
+    - Match review_length_tendency from user analysis.
+    - Echo vocabulary_markers when authentic to do so.
+    - Do not mention IDs, formulas, tools, YAML, database fields, agents, or
+      unsupported facts.
+    - If direct_review_exists is false, never imply the user reviewed this exact
+      item before.
+    - If user profile is missing, avoid user-specific claims.
+    - If item profile is missing, avoid item-specific claims.
+    - Return raw JSON only.
+    - No markdown.
+    - No prose before JSON.
+    - No prose after JSON.
+    - No rationale.
+    - No explanation.
+    - The first character must be "{".
+    - The last character must be "}".
+
+    Output format:
+    {"stars": <predicted_stars>, "review": "<natural Yelp-style review>"}
+  expected_output: >
+    A valid JSON object only:
+    {"stars": <float copied exactly from predicted_stars>, "review": "<string>"}
+    A raw JSON object only.
+    Do not use markdown.
+    Do not use

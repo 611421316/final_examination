@@ -1,0 +1,14 @@
+{
+  "id": "df5385f5-a0c7-4111-be32-e042ba0e3b03",
+  "generation": 2,
+  "iteration": 4,
+  "current_iteration": 10,
+  "metrics": {
+    "combined_score": 0.8674623530069366,
+    "preference_estimation": 0.8800000000000001,
+    "review_generation": 0.8549247060138732
+  },
+  "language": "yaml",
+  "timestamp": 1781830298.464854,
+  "saved_at": 1781832820.480451
+}

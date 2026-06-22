@@ -1,0 +1,14 @@
+{
+  "id": "d1b8159b-4ef0-4099-8046-711a1f90992d",
+  "generation": 5,
+  "iteration": 35,
+  "current_iteration": 45,
+  "metrics": {
+    "combined_score": 0.878459519548202,
+    "preference_estimation": 0.8800000000000001,
+    "review_generation": 0.8769190390964039
+  },
+  "language": "text",
+  "timestamp": 1781838328.788586,
+  "saved_at": 1781841178.39979
+}

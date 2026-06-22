@@ -1,0 +1,14 @@
+{
+  "id": "a3d2521a-d2a7-4a21-9d14-83ce4a920828",
+  "generation": 2,
+  "iteration": 49,
+  "timestamp": 1781820987.6774342,
+  "parent_id": "686f3f3e-4948-4d99-a987-94f3680176aa",
+  "metrics": {
+    "combined_score": 0.8702479816641193,
+    "preference_estimation": 0.8800000000000001,
+    "review_generation": 0.8604959633282385
+  },
+  "language": "yaml",
+  "saved_at": 1781821280.894003
+}
